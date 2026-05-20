@@ -19,6 +19,7 @@ local player_hands = {["Red"] = "0e9106",
 
 function onLoad()
   self.registerCollisions()
+  self.interactable = false
 end
 
 --helper function that loops through the players hand (who clicked the buy button)

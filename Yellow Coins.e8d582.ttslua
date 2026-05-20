@@ -7,6 +7,7 @@ local coin_zone_guids = nil
 local zone = nil
 
 function onLoad()
+  self.interactable = false
   self.registerCollisions(false)
   coin_zone_guids = Global.getTable("coin_zone_guids")
   zone = getObjectFromGUID(coin_zone_guids["Yellow"])

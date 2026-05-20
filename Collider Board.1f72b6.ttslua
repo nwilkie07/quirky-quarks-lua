@@ -1,6 +1,10 @@
 local turn_order = {}
 local hasColorBid = {}
 
+function onLoad()
+  self.interactable = false
+end
+
 --add a check to ensure enough cards in the deck
 function two_player_deal(round)
   --add round control

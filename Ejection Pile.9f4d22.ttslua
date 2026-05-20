@@ -3,19 +3,9 @@ local placement_pos = { - 14.50, 0.97, - 7.00}
 --none: player has not passed
 --round: player passes on the current bid
 --all: player permenantly passed discovery phase
-local passes = {
-  ["Red"] = "none",
-  ["Blue"] = "none",
-  ["Green"] = "none",
-  ["Yellow"] = "none"
-}
+local passes = {}
 
-local hasStartedBid = {
-  ["Red"] = 0,
-  ["Blue"] = 0,
-  ["Yellow"] = 0,
-  ["Green"] = 0
-}
+local hasStartedBid = {}
 
 local bid_order = {}
 
@@ -28,6 +18,8 @@ local bidder = nil
 local bid_round = 1
 -- the card being bid upon
 local bid_object = nil
+--tracks the place to send card back if a player passes
+local bid_card_start_pos = nil
 local collider_board = nil
 local bid_card_guids = {}
 local three_ev_bag = nil
@@ -36,6 +28,26 @@ local turn_control = nil
 function onLoad()
   three_ev_bag = Global.getVar("three_ev_bag")
   turn_control = getObjectFromGUID("90061a")
+  self.interactable = false
+  local players = getSeatedPlayers()
+  for i = 1, #players do
+    passes[players[i]] = "none"
+    hasStartedBid[players[i]] = 0
+  end
+end
+
+function onEndTurn(player)
+  local player_color = player.color
+
+  --if the player ends their turn without bidding on a card
+  if bidder == nil then
+    playerPass(player, "all")
+    --if the player ends their turn but a bid already exists
+  elseif bidder ~= player_color then
+    playerPass(player, "round")
+  else
+    turn_control.call("next_turn")
+  end
 end
 
 --checks if player has the money and it is their bid turn, then increases the bid by +1
@@ -65,8 +77,8 @@ end
 -- type: the pass type "round" or "all"
 function playerPass(player, type)
   local collider_board = getObjectFromGUID("1f72b6")
-  local skip_player = turn_control.getTable("skip_player")
-  local player_order = turn_control.getTable("player_order")
+  local skip_player = turn_control.call("get_skip_player")
+  local player_order = turn_control.call("get_player_order")
 
   --reset everything if bidder is passing
   -- check if there is someone left to bid happens below
@@ -74,27 +86,32 @@ function playerPass(player, type)
   if player.color == bidder then
     bid = bid_round
     bidder = nil
+    --return bid card to its original position
+    if bid_object ~= nil and bid_card_pos ~= nil then
+      bid_object.setPositionSmooth({bid_card_pos[1], 2, bid_card_pos[3]})
+    end
     bid_object = nil
+    --return player pawn as well
     collider_board.call("kickLowerBid", player.color)
   end
 
   local current_phase = Global.getVar("current_phase")
   if current_phase == 4 then
     passes[player.color] = type
-
-    -- cannot remove the final player from the turn system
-    if #skip_player >= #player_order - 1 then
+    -- cannot remove the final player from the turn system so try ending the bid
+    if skip_player ~= nil and #skip_player >= #player_order - 1 then
       attemptEndBid()
       return
     end
 
     --remove this player from the internal turn control for this bidding phase
     turn_control.call("add_skip", player.color)
-    -- if it is the turn of the passing players
-    -- find next viable player/bidder
-    if turn_control.call("get_current_turn") == player.color then
-      turn_control.call("next_turn")
+
+    --set for bid amount tracking that if a player passes they've has a chance at bidding
+    if type == "all" then
+      hasStartedBid[player.color] = 1
     end
+
     attemptEndBid()
   else
     broadcastToAll("Wrong phase, this button should not be available to you!")
@@ -117,6 +134,13 @@ function calculateBid(collision)
   local object = collision["object"]
   local figurine_guids = Global.getTable("figurine_guids")
   local physicist = getObjectFromGUID(figurine_guids[player_color])
+  local current_player = turn_control.call("get_current_turn")
+
+  if player_color ~= current_player then
+    broadcastToAll("It is not your turn to bid " ..player_color)
+    collider_board.call("kickLowerBid", player_color)
+    return
+  end
 
   -- exit the function if player is just moving figurine on the card
   if bidder == player_color then
@@ -146,12 +170,16 @@ function calculateBid(collision)
   -- if no bid is set, get the bid_object and set it, move card to bid location
   if bid_object == nil then
     if object ~= nil and object.type == "Deck" then
+      --track original position
+      bid_card_start_pos = object.getPosition()
       bid_card = object.takeObject({
         position = bid_card_pos,
         smooth = true,
       })
     else
       bid_card = object
+      --track original position
+      bid_card_start_pos = object.getPosition()
       bid_card.setPositionSmooth(bid_card_pos)
     end
     bid_setup = true
@@ -170,12 +198,13 @@ function calculateBid(collision)
 
   --this error will likely never happen
   -- if round is Discovery Round
-  --if current_phase ~= 4 then
-  --broadcastToAll("It is not the Discovery phase, you cannot bid on ejection cards!")
-  --return
-  --end
+  if current_phase ~= 4 then
+    broadcastToAll("It is not the Discovery phase, you cannot bid on ejection cards!")
+    return
+  end
 
   --check to make sure the player can afford the bid they're making
+  -- what is going on here?
   if player_coins < bid + 1 then
     local type = "bid"
     if passes[player_color] == "none" then
@@ -204,7 +233,7 @@ function calculateBid(collision)
       bid = bid + 1
       collider_board.UI.setAttribute("discovery_bid", "text", "Bid: " ..bid)
 
-      attemptEndBid() -- does this need to be here
+      --attemptEndBid() -- does this need to be here
     else
       broadcastToColor("You already have highest bid or have passed this round or you are trying to bid on another card. Only one card bid at a time.", player_color)
     end
@@ -214,6 +243,7 @@ end
 function attemptEndBid()
   local passCount = 0
   local players = getSeatedPlayers()
+  local bid_count = 0
   --counting number of players that have passed
   for i = 1, #players do
     local player_color = players[i]
@@ -235,45 +265,39 @@ function attemptEndBid()
     one_ev_bag.call("spendCoins", {["cost"] = bid, ["player_color"] = bidder})
 
     hasStartedBid[bidder] = 1
-    local bid_count = hasStartedBid["Yellow"] + hasStartedBid["Red"] + hasStartedBid["Blue"] + hasStartedBid["Green"]
+    for i = 1, #players do
+      bid_count = bid_count + hasStartedBid[players[i]]
+    end
 
-    local player_order = turn_control.getTable("player_order")
+    local player_order = turn_control.call("get_player_order")
     local player_index = Global.getTable("player_index")
-    local order_player = turn_control.getTable("order_player")
+    local order_player = turn_control.call("get_order_player")
+
+    -- clear skips first, then re-add players who have skipped the whole phase
+    turn_control.call("clear_skip")
+    passCount = 0
 
     -- has everyone had a chance to bid at the current starting bid value?
     -- if so increment the round which increases the starting bid by 1
-    if bid_count == #players then
-      local player_color = players[i]
+    -- check which players should still be skipped by internal turn controls
+    -- resetting turns
+    if bid_count >= #players then
       bid_round = bid_round + 1
       for i = 1, #players do
-        if passes[player_color] ~= "all" then
+        if passes[players[i]] == "all" then
+          hasStartedBid[players[i]] = 1
+          turn_control.call("add_skip", players[i])
+          passCount = passCount + 1
+        else
           -- table index is nil?
-          hasStartedBid[player_color] = 0
+          hasStartedBid[players[i]] = 0
         end
       end
     end
 
-
-
-    -- check which players should still be skipped by internal turn controls
-    -- resetting turns
-
-    -- clear skips first, then re-add players who have skipped the whole phase
-    turn_control.call("clear_skip")
-
-    for i = 1, #order_player do
-      local player_color = order_player[i]
-
-      if passes[player_color] == "all" then
-        turn_control.call("add_skip", player_color)
-      end
-    end
-
-    -- set the next person who needs to bid by shifting the player_order
-    --WHAT TO DO HERE?
-    local order_player = turn_control.getTable("order_player")
-    for n=1, #order_player do
+    -- set the next turns as the person who needs to bid next
+    local order_player = turn_control.call("get_order_player")
+    for n = 1, #order_player do
       if hasStartedBid[order_player[n]] == 0 then
         turn_control.call("set_turn", order_player[n])
         break
@@ -285,16 +309,21 @@ function attemptEndBid()
     bid_object = nil
     bidder = nil
 
-    collider_board.UI.setAttribute("discovery_bid", text, "Bid: 0")
+    collider_board.UI.setAttribute("discovery_bid", "text", "Bid: 0")
 
     for color, val in pairs(passes) do
       if val == "round" then
         passes[color] = "none"
       end
     end
+  else
+    -- sets next turn, should auto figure it out based on passes
+    turn_control.call("next_turn")
   end
 
-  if passCount == #players then
+  if discovery_zone.getObjects() == nil then
+    Global.call("endPhase")
+  elseif passCount == #players then
     -- discovery phase is over, perform cleanup
     local discovery_zone = getObjectFromGUID("6c7a71")
     local cards = discovery_zone.getObjects()
@@ -457,8 +486,6 @@ function sendToDiscard(cards)
         i * 0.25
       )
     end
-    log(#bid_card_guids)
-    log(bid_card_guids)
   end
 
   --assumes there will be at least one deck

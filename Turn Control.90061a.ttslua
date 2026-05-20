@@ -12,6 +12,26 @@ function onLoad()
   self.interactable = false
 end
 
+function get_skip_player()
+  return skip_player
+end
+
+function get_current_turn()
+  return current_turn
+end
+
+function get_order_player()
+  return order_player
+end
+
+function get_player_order()
+  return player_order
+end
+
+function get_player_count()
+  return player_count
+end
+
 function initiate_turns()
   local players = getSeatedPlayers()
   player_count = #players
@@ -33,20 +53,19 @@ function initiate_turns()
   update_turn_ui(current_turn)
 end
 
-function get_current_turn()
-  return current_turn
-end
-
 function add_skip(player_color)
   local players = getSeatedPlayers()
+  log("Add skip called, count skips")
+  log(count_skips())
   if count_skips() < #players then
     skip_player[player_color] = "skip"
   end
+  log("skip player table")
 end
 
 function count_skips()
   local count = 0
-  for i = 0, #order_player do
+  for i = 1, #order_player do
     if skip_player[order_player[i]] == "skip" then
       count = count + 1
     end
@@ -60,7 +79,7 @@ end
 
 function clear_skip()
   local players = getSeatedPlayers()
-  for i = 0, #players do
+  for i = 1, #players do
     skip_player[players[i]] = "none"
   end
 end
@@ -117,4 +136,18 @@ function update_turn_ui(player_color)
     end
   end
   Global.UI.setAttributes("turn_indicator", {color = player_color, text = player_color .. "'s Turn", active = true, visibility = visibility_set})
+end
+
+function toggle_dropdown()
+  local active = Global.UI.getAttribute("end_turn", "active")
+
+  if active == "True" then
+    Global.UI.setAttribute("end_turn", "active", false)
+    Global.UI.setAttribute("pass_bid", "active", false)
+    Global.UI.setAttribute("pass_phase", "active", false)
+  else
+    Global.UI.setAttribute("end_turn", "active", "True")
+    Global.UI.setAttribute("pass_bid", "active", "True")
+    Global.UI.setAttribute("pass_phase", "active", "True")
+  end
 end

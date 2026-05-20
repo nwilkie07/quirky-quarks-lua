@@ -489,6 +489,20 @@ draw_card_tracker = {
   ["Green"] = {}
 }
 
+
+local turn_count = 0
+function trackQuestPhase()
+  local turn_control = getObjectFromGUID("90061a")
+  local players = getSeatedPlayers()
+  if turn_count >= #players then
+    log(turn_count, "", "Made it to round change! Turn_count")
+    onRoundChange()
+  else
+    turn_count = turn_count + 1
+    turn_control.call("next_turn")
+  end
+end
+
 --being called twice?
 function onPhaseChange()
   local turn_control = getObjectFromGUID("90061a")
@@ -520,25 +534,22 @@ function onPhaseChange()
 
     particles_deck.call("onEjectionPhaseStart")
   elseif current_phase == 4 then
+    --Discovery Phase
     collider_board.UI.setAttribute("discovery_panel", "visibility", "")
     ejection_pile.call("setupDiscoveryPhase")
-    --Discovery Phase
+    Global.UI.setAttribute("change_turn", "onClick", "9f4d22/onEndTurn")
   elseif current_phase == 5 then
     --Quest Phase
+    Global.UI.setAttribute("change_turn", "onClick", "trackQuestPhase")
+
   end
   turn_control.call("set_turn", starting_physicist)
   UI.setAttribute("round_tracker", "text", "Round " ..current_round.. ": " .. phase_text[current_phase] .. " Phase")
 end
 
-player_draws = {
-  ["Red"] = 0,
-  ["Blue"] = 0,
-  ["Green"] = 0,
-  ["Yellow"] = 0
-}
-
 function onRoundChange()
   local turn_control = getObjectFromGUID("90061a")
+  Global.UI.setAttribute("change_turn", "onClick", "90061a/next_turn")
   turn_control.call("set_turn", starting_physicist)
   starting_physicist = turn_control.call("next_turn")
 
@@ -557,12 +568,11 @@ function onRoundChange()
       particles_deck.call("two_player_deal")
     end
 
-    player_draws = {
-      ["Red"] = 1,
-      ["Blue"] = 1,
-      ["Green"] = 1,
-      ["Yellow"] = 1
-    }
+    local players = getSeatedPlayers()
+    --setup player draw tracking
+    for i=1, #players do
+      player_draws[players[i]] = 1
+    end
 
     -- check for and update player draw_counts if they have these special cards
     if singleCardPowers["Green Pion Start"] ~= "none" then
@@ -828,7 +838,7 @@ function resolveNeutrino(click_obj, player_color)
   -- this function is a mess
   function onObjectEnterZone(zone, enter_object)
     if enter_object ~= nil and zone ~= nil then
-      if zone.type == hand and enter_object.type == "Card" then
+      if zone.type == "Hand" and enter_object.type == "Card" then
         --has to do with special cards that allow drawing
         if current_phase == 2 and after_eject_color ~= "none" then
           -- make no changes when its a neutrino as the neutrino will retrigger this function
@@ -842,7 +852,7 @@ function resolveNeutrino(click_obj, player_color)
         end
 
         -- monitors draws to know when to end the phase
-        if current_phase == 1 then
+        if current_phase == 1 and current_round ~= 1 then
           -- check if all cards have been drawn and end phase
           if enter_object.getName() ~= "Neutrino" then
             player_draws[zone.color] = player_draws[zone.color] - 1

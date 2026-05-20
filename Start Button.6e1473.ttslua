@@ -10,6 +10,7 @@ function onLoad()
     tooltip = "Start the game.",
   }
   self.createButton(params)
+  self.interactable = false
 end
 
 function start_game()

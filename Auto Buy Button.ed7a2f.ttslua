@@ -11,4 +11,5 @@ function onLoad()
     tooltip = "Automatically build card.",
   }
   self.createButton(params)
+  self.interactable = false
 end

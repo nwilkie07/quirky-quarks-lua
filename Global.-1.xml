@@ -1,5 +1,5 @@
 <!-- Xml UI. See documentation: https://api.tabletopsimulator.com/ui/introUI/ -->
-<!-- Automatically adjust sizing based on Toggles Visible  -->
+<!-- Automatically adjust sizing based on Toggles Visible -->
 <!--ADD CANCEL BUTTON-->
 
 <VerticalLayout rectAlignment="UpperLeft" Width="500" Height="70">
@@ -19,18 +19,11 @@
 </VerticalLayout>
 
 <Panel anchorMin="0 0" anchorMax="1 0.91">
-<Panel Width="200" Height="37" rectAlignment="upperCenter">
-  <Button id="change_turn" onClick="90061a/next_turn" tooltipPosition="Below" tooltip="Click to end your turn." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">End Your Turn</Button>
-  <Button id="turn_indicator" tooltipPosition="Below" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">Players Turn</Button>
+  <Panel Width="200" Height="37" rectAlignment="upperCenter">
+    <Button id="change_turn" onClick="90061a/next_turn" tooltipPosition="Below" tooltip="Click to end your turn." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">End Your Turn</Button>
+    <Button id="turn_indicator" tooltipPosition="Below" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">Players Turn</Button>
+  </Panel>
 </Panel>
-</Panel>
-
-<Panel anchorMin="0 0" anchorMax="1 0.91">
-<Panel Width="200" Height="37" rectAlignment="upperCenter">
-  <Button id="end_eject" onClick="" tooltipPosition="Below" tooltip="Click when you are done ejecting cards." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="">I'm Done Ejecting Cards</Button>
-</Panel>
-</Panel>
-
 
 <Panel id="build_selector" rectAlignment="middleCenter" Width="150" Height="300" background="#FFFFFF">
   <TableLayout cellBackgroundColor="#FFFFFF" rowBackgroundColor="#FFFFFF" autoCalculateHeight="true">

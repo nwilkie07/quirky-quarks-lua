@@ -7,6 +7,7 @@ local build_zone_guids = nil
 local zone = nil
 
 function onLoad()
+  self.interactable = false
   self.registerCollisions(false)
   build_zone_guids = Global.getTable("build_zone_guids")
   zone = getObjectFromGUID(build_zone_guids["Blue"])
