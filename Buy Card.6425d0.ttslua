@@ -4,7 +4,7 @@ local spend_cards = {}
 local guids = {}
 local neg_count = 0
 local player_color = ""
-local build_board_guids = nil
+local build_zone_guids = nil
 
 local player_hands = {["Red"] = "0e9106",
   ["Yellow"] = "3e5ce5",
@@ -14,7 +14,7 @@ local player_hands = {["Red"] = "0e9106",
 function onLoad()
   self.registerCollisions()
   self.interactable = false
-  build_board_guids = Global.getTable("build_board_guids")
+  build_zone_guids = Global.getTable("build_zone_guids")
 end
 
 --helper function that loops through the players hand (who clicked the buy button)
@@ -30,6 +30,31 @@ function getPlayerHandItems()
     for i = 1, #objects do
       local object = objects[i]
       local name = object.getName()
+      --filter out unbuilt cards
+      if object.memo == "particle" then
+        if hand_items[name] ~= nil then
+          hand_items[name] = hand_items[name] + 1
+        else
+          hand_items[name] = 1
+        end
+        if guid_items[name] == nil then
+          guid_items[name] = {object.guid}
+        else
+          table.insert(guid_items[name], object.guid)
+        end
+      end
+    end
+  end
+
+  local build_guid = build_zone_guids[player_color]
+  local build_zone = getObjectFromGUID(build_guid)
+
+  -- handle cards in build area
+  if build_zone ~= nil and build_zone.getObjects() ~= nil then
+    local build_objects = build_zone.getObjects()
+    for i = 1, #build_objects do
+      local object = build_objects[i]
+      local name = object.getName()
       if hand_items[name] ~= nil then
         hand_items[name] = hand_items[name] + 1
       else
@@ -42,6 +67,7 @@ function getPlayerHandItems()
       end
     end
   end
+  log(hand_items)
   return {hand_items, guid_items}
 end
 
@@ -61,16 +87,17 @@ end
 function performPurchase()
   local cards = Player[player_color].getHandObjects(1)
   local hand = player_hands[player_color]
-  -- what is going on??!?!?!? something to do with local?
-
   -- discard areas
   local particle_discard = Global.getVar("particle_discard_zone")
   local quest_one_discard = Global.getVar("quest1_discard_zone")
   local quest_two_discard = Global.getVar("quest2_discard_zone")
+  local build_board_guids = Global.getTable("build_board_guids")
+  local build_board = getObjectFromGUID(build_board_guids[player_color])
 
   -- puts the cards required to build the Quest card from the players hand into the discard pile
   for i = 1, #spend_cards do
     local card = getObjectFromGUID(spend_cards[i])
+
     local pos = nil
     local rot = nil
     if card.memo == 'particle' then
@@ -86,7 +113,6 @@ function performPurchase()
       rot = quest_two_discard.getRotation()
     end
 
-    local build_board = getObjectFromGUID(build_board_guids[player_color])
     local build_pos = build_board.getPosition()
     local build_rot = build_board.getRotation()
 
@@ -115,7 +141,6 @@ function performPurchase()
       end, (#spend_cards + i) * 0.5
     )
   end
-
 end
 
 --places purchased card in build zone that auto organizes
@@ -123,7 +148,9 @@ end
 local build_zones = Global.getTable("build_zone_guids")
 local build_zone = getObjectFromGUID(build_zones[player_color])
 
-getObjectFromGUID(purchase_object.getGUID()).setPositionSmooth(build_zone.getPosition())
+if purchase_object ~= nil then
+  getObjectFromGUID(purchase_object.getGUID()).setPositionSmooth(build_zone.getPosition())
+end
 Wait.time(
   function()
     build_zone.Zone.layout()
@@ -158,6 +185,7 @@ function purchaseCard(clicked_object, color)
   -- Get gluonium tracking from Global
   local spent_gluonium = Global.getTable("spent_gluonium")
   local gluonium_tracker = Global.getTable("gluonium_tracker")
+  local original_spent_gluonium = Global.getTable("spent_gluonium")
 
   --negatives is an array of all the card names/types (with duplicates) of the missing cards
   local negatives = {}
@@ -242,6 +270,8 @@ function purchaseCard(clicked_object, color)
       guids = {}
       neg_count = 0
       player_color = ""
+      --need to reset gluonium as the user was unable to perform the purchase
+      Global.setTable("spent_gluonium", original_spent_gluonium)
       broadcastToAll("You cannot afford this card.")
       return false
     else
@@ -303,7 +333,7 @@ function complexPurchase(player, value, id)
   local text = UI.getAttribute("indicator_text", "text")
 
   for i = 1, 5 do
-    isOn = UI.getAttribute("toggle" ..i, "isOn")
+    local isOn = UI.getAttribute("toggle" ..i, "isOn")
     if isOn == "True" then
       selected = selected + 1
     end
@@ -311,13 +341,13 @@ function complexPurchase(player, value, id)
 
   if selected == (neg_count * (-1)) then
     for i = 1, 5 do
-      isOn = UI.getAttribute("toggle" .. i, "isOn")
+      local isOn = UI.getAttribute("toggle" .. i, "isOn")
       if isOn == "True" then
-        button_text = UI.getAttribute("text" .. i, "text")
-        text = string.sub(button_text, 3, #button_text - 1)
+        local button_text = UI.getAttribute("text" .. i, "text")
+        local text2 = string.sub(button_text, 3, #button_text - 1)
 
         for j = 1, 3 do
-          card = table.remove(guids[text])
+          local card = table.remove(guids[text2])
           table.insert(spend_cards, card)
         end
       end

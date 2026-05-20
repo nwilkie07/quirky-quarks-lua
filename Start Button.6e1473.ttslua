@@ -59,7 +59,7 @@ function start_game()
     -- Wait for initial cards to be dealt before placing coins
     Wait.condition(
       function()
-        deal_coins(particles, True)
+        deal_coins(particles, true)
         -- Wait for coins to settle before dealing collider cards
         Wait.condition(
           function()
@@ -73,7 +73,7 @@ function start_game()
         )
       end,
       function() return particles ~= nil and particles.resting end,
-      15, function() log("WARNING: Timeout waiting for particle deck to rest"); deal_coins(particles, True) end
+      15, function() log("WARNING: Timeout waiting for particle deck to rest"); deal_coins(particles, true) end
     )
   end
 
@@ -152,7 +152,7 @@ function deal_coins(particles, isTwoPlayer)
   players = getSeatedPlayers()
   for i = 1, #players do
     local coin_area = getObjectFromGUID(coin_guids[players[i]])
-    pos = coin_area.getPosition()
+    local pos = coin_area.getPosition()
     local x_mod = 1.5
     local y = pos["y"] + 1
     local z_mod = pos["z"] + 1.5
@@ -167,7 +167,7 @@ function deal_coins(particles, isTwoPlayer)
     one_ev.takeObject({
       position = {pos["x"], y, pos["z"]}
     })
-    if isTwoPlayer ~= True then
+    if isTwoPlayer ~= true then
       one_ev.takeObject({
         position = {pos["x"] + x_mod, y, pos["z"]}
       })

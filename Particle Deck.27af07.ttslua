@@ -5,10 +5,13 @@ local turn_control = nil
 
 local players = {}
 
+local buy_card = nil
+
 function onLoad()
   self.memo = "Particle Deck"
   turn_control = getObjectFromGUID("90061a")
   players = Global.call("getPlayers")
+  buy_card = Global.getVar("buy_card")
 end
 
 function onPlayerChangeColor( player_color)
@@ -30,6 +33,7 @@ local deck_discard_guids = {
 -- keeps an eye on the decks to ensure discards are being shuffled and added back as decks get low in cards
 function attemptDeckReshuffle(container)
   -- use putObject
+  if container == nil then return end
   if container.type == "Deck" then
     local deck_name = container.memo
     if #container.getObjects() <= min_deck_size[deck_name][#players] then
@@ -64,9 +68,10 @@ local main_decks = {
 function onObjectLeaveContainer(container, leave_object)
   if leave_object.type == "Card" then
     leave_object.addContextMenuItem("Eject Card", ejectCard)
+    leave_object.addContextMenuItem("Discard", discardCard)
   end
 
-  container_name = container.memo
+  local container_name = container.memo
 
   for name, memo in pairs(main_decks) do
     if name == container_name then
@@ -93,7 +98,7 @@ local eject_locations = {
   ["Green"] = { - 14.00, 1.00, 8.00}
 }
 
-local ejection_allowances = {
+ejection_allowances = {
   ["Red"] = 0,
   ["Yellow"] = 0,
   ["Green"] = 0,
@@ -197,75 +202,130 @@ function onEjectionPhaseEnd()
   end
 end
 
+
+--allow player to discard cards using context menu
+function discardCard(player_color, position, card)
+  local pos = nil
+  local rot = nil
+  -- discard areas
+  local particle_discard = Global.getVar("particle_discard_zone")
+  local quest_one_discard = Global.getVar("quest1_discard_zone")
+  local quest_two_discard = Global.getVar("quest2_discard_zone")
+  if card.memo == 'particle' then
+    pos = particle_discard.getPosition()
+    rot = particle_discard.getRotation()
+  end
+  if card.memo == "quest_one" then
+    pos = quest_one_discard.getPosition()
+    rot = quest_one_discard.getRotation()
+  end
+  if card.memo == "quest_two" then
+    pos = quest_two_discard.getPosition()
+    rot = quest_two_discard.getRotation()
+  end
+
+  local build_board_guids = Global.getTable("build_board_guids")
+  local build_board = getObjectFromGUID(build_board_guids[player_color])
+  local build_pos = build_board.getPosition()
+  local build_rot = build_board.getRotation()
+
+  local x_mod = 6
+  local y_height = pos["y"] + 1
+  local z_mod = - 6
+
+  if player_color == "Red" or player_color == "Yellow" then
+    z_mod = 6
+    x_mod = - 6
+  end
+
+  if card ~= nil then
+    --place cards in front of user first
+    Wait.time( function()
+      card.setPosition({build_pos["x"] + x_mod, y_height, build_pos["z"] + z_mod})
+      card.setRotation({build_rot["x"], build_rot["y"], 0})
+    end,
+    0.25
+  )
+
+  --then send cards to discard piles
+  Wait.time( function()
+    card.setPositionSmooth(pos)
+    card.setRotationSmooth(rot)
+    end, 0.5
+  )
+end
+
+
+end
+
 --add global ejection table to track how many ejects people can do
 function ejectCard(player_color, position, object)
-  local single_card_powers = Global.getTable("singleCardPowers")
-  local down_annihilation_color = single_card_powers["Down Annihilation"]
-  local eject_zone = getObjectFromGUID("0cb1ea")
-  local eject_zone_location = eject_zone.getPosition()
+local single_card_powers = Global.getTable("singleCardPowers")
+local down_annihilation_color = single_card_powers["Down Annihilation"]
+local eject_zone = getObjectFromGUID("0cb1ea")
+local eject_zone_location = eject_zone.getPosition()
 
-  local zones = object.getZones()
-  local phase = Global.getVar("current_phase")
-  local round = Global.getVar("current_round")
+local zones = object.getZones()
+local phase = Global.getVar("current_phase")
+local round = Global.getVar("current_round")
 
-  local current_turn = turn_control.call("get_current_turn")
-  if player_color ~= current_turn then
-    broadcastToColor("It is not your turn to eject!", player_color)
-    return
-  end
+local current_turn = turn_control.call("get_current_turn")
+if player_color ~= current_turn then
+  broadcastToColor("It is not your turn to eject!", player_color)
+  return
+end
 
-  if phase ~= 3 then
-    broadcastToColor("You cannot eject cards in this phase!", player_color)
-    return
-  end
-  if ejection_allowances[player_color] == 0 and round ~= 5 then
-    broadcastToColor("You are not allowed to eject any more cards", player_color)
-    return
-  end
+if phase ~= 3 then
+  broadcastToColor("You cannot eject cards in this phase!", player_color)
+  return
+end
+if ejection_allowances[player_color] == 0 and round ~= 5 then
+  broadcastToColor("You are not allowed to eject any more cards", player_color)
+  return
+end
 
-  if inHandZone(object, player_color) then
-    local one_ev_bag = Global.getVar("one_ev_bag")
-    local coin_boards = Global.getTable("coin_board_guids")
-    ejection_allowances[player_color] = ejection_allowances[player_color] - 1
+if inHandZone(object, player_color) then
+  local one_ev_bag = Global.getVar("one_ev_bag")
+  local coin_boards = Global.getTable("coin_board_guids")
+  ejection_allowances[player_color] = ejection_allowances[player_color] - 1
 
-    --remove from hand instantly
-    object.setRotation({0, 180, 180})
-    object.setPosition(eject_locations[player_color])
-    --set location again for smooth animation
-    object.setPositionSmooth({eject_zone_location[1], 2, eject_zone_location[3]})
+  --remove from hand instantly
+  object.setRotation({0, 180, 180})
+  object.setPosition(eject_locations[player_color])
+  --set location again for smooth animation
+  object.setPositionSmooth({eject_zone_location[1], 2, eject_zone_location[3]})
 
-    --one coin per card ejected
-    --only pay out coins when ejections are complete??
-    --Make use of deal card generic function
-    local one_ev_bag = Global.getVar("one_ev_bag")
-    if down_annihilation_color == player_color then
-      one_ev_bag.call("dealCoins", {["value"] = 2, ["player_color"] = player_color})
-    else
-      one_ev_bag.call("dealCoins", {["value"] = 1, ["player_color"] = player_color})
-    end
-
+  --one coin per card ejected
+  --only pay out coins when ejections are complete??
+  --Make use of deal card generic function
+  if down_annihilation_color == player_color then
+    one_ev_bag.call("dealCoins", {["value"] = 2, ["player_color"] = player_color})
   else
-    print("You can only eject cards in your hand!")
+    one_ev_bag.call("dealCoins", {["value"] = 1, ["player_color"] = player_color})
   end
+
+else
+  print("You can only eject cards in your hand!")
+end
 end
 
 function ejectionEndSteps()
-  broadcastToAll("Discovery Phase starting please wait.")
-  Wait.time(
-    function()
-      Global.setVar("neutrinosEndRound", true)
-      Global.call("checkForNeutrinos")
-    end, 2)
-  end
+broadcastToAll("Discovery Phase starting please wait.")
+Wait.time(
+  function()
+    Global.setVar("neutrinosEndRound", true)
+    Global.call("checkForNeutrinos")
+  end, 2)
+end
 
-  --checks if the ejection card is in the hand zone of the correct person
-  function inHandZone(object, ejectColor)
-    local zones = object.getZones()
-    for i = 1, #zones do
-      local zone = zones[i]
-      if zone.type == "Hand" and ejectColor == zone.getData()["FogColor"] then
-        return true
-      end
+--checks if the ejection card is in the hand zone of the correct person
+function inHandZone(object, ejectColor)
+  local zones = object.getZones()
+  for i = 1, #zones do
+    local zone = zones[i]
+    if zone.type == "Hand" and ejectColor == zone.getData()["FogColor"] then
+      return true
     end
-    return false
   end
+  return false
+end

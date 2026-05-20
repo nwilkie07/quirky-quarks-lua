@@ -2,7 +2,7 @@
 <!-- Automatically adjust sizing based on Toggles Visible -->
 <!--ADD CANCEL BUTTON-->
 
-<Panel offsetXY="0 -80">
+<Panel offsetXY="0 0">
   <Panel Width="200" Height="37" rectAlignment="upperCenter" allowDragging="true" returnToOriginalPositionWhenReleased="false">
     <Button id="change_turn" onClick="90061a/next_turn" tooltipPosition="Below" tooltip="Click to end your turn." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">End Your Turn</Button>
     <Button id="turn_indicator" tooltipPosition="Below" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">Players Turn</Button>
@@ -10,18 +10,21 @@
 </Panel>
 
 <Panel offsetXY="80 0">
-  <VerticalLayout spacing="4" rectAlignment="upperLeft" Width="200" Height="128" allowDragging="true" returnToOriginalPositionWhenReleased="false" childForceExpandHeight="false" childControlHeight="false">
+  <VerticalLayout spacing="5" rectAlignment="upperLeft" Width="200" Height="128" allowDragging="true" returnToOriginalPositionWhenReleased="false" childForceExpandHeight="false" childControlHeight="false">
     <Panel Width="200" Height="32">
       <Button id="toggle_tools" onClick="toggleUiTools" tooltipPosition="Right" tooltip="Sort the cards in your hand." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="">Show/Hide Tools</Button>
     </Panel>
-    <Panel id="sort_cards_panel" Width="200" Height="32" visibility="">
-      <Button id="sort_cards" onClick="sort_hand" tooltipPosition="Right" tooltip="Sort the cards in your hand." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Sort Cards</Button>
+    <Panel id="sort_cards_panel" Width="200" Height="32" visibility="Red|Blue|Green|Yellow" ignoreMouseOver="true">
+      <Button id="sort_cards" onClick="sort_hand" tooltipPosition="Right" tooltip="Sort the cards in your hand." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" ignoreMouseOver="true">Sort Cards</Button>
     </Panel>
-    <Panel id="sort_coins_panel" Width="200" Height="32" visibility="">
-      <Button id="sort_coins" onClick="layout_coins" tooltipPosition="Right" tooltip="Sort the money in your coin area." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Sort Coins</Button>
+    <Panel id="sort_coins_panel" Width="200" Height="32" visibility="Red|Blue|Green|Yellow" ignoreMouseOver="true">
+      <Button id="sort_coins" onClick="layout_coins" tooltipPosition="Right" tooltip="Sort the money in your coin area." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" ignoreMouseOver="true">Sort Coins</Button>
     </Panel>
-    <Panel id="update_score_panel" Width="200" Height="32" visibility="">
-      <Button id="update_score" onClick="updateScoreUi" tooltipPosition="Right" tooltip="Update coin and build area values in case of error." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Update eV/Score</Button>
+    <Panel id="convert_coins_panel" Width="200" Height="32" visibility="Red|Blue|Green|Yellow" ignoreMouseOver="true">
+      <Button id="convert_coins" onClick="convert_coins" tooltipPosition="Right" tooltip="If you have to many 1 eV coins." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" ignoreMouseOver="true">Convert Coins</Button>
+    </Panel>
+    <Panel id="update_ev_and_score_panel" Width="200" Height="32" visibility="Red|Blue|Green|Yellow" ignoreMouseOver="true">
+      <Button id="update_score" onClick="updateScoreUi" tooltipPosition="Right" tooltip="Update coin and build area values in case of error." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" ignoreMouseOver="true">Update eV/Score</Button>
     </Panel>
   </VerticalLayout>
 </Panel>

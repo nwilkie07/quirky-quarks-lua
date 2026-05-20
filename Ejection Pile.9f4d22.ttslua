@@ -18,6 +18,7 @@ local bid_tracker = 2
 local bid_object = nil
 --tracks the place to send card back if a player passes
 local bid_card_start_pos = nil
+local starting_bidder = nil
 local collider_board = nil
 local bid_card_guids = {}
 local three_ev_bag = nil
@@ -101,8 +102,8 @@ function playerPass(player, type)
     bid = bid_tracker
     bidder = nil
     --return bid card to its original position
-    if bid_object ~= nil and bid_card_pos ~= nil then
-      bid_object.setPositionSmooth({bid_card_pos[1], 2, bid_card_pos[3]})
+    if bid_object ~= nil and bid_card_start_pos ~= nil then
+      bid_object.setPositionSmooth({bid_card_start_pos[1], 2, bid_card_start_pos[3]})
     end
     bid_object = nil
     --return player pawn as well
@@ -128,6 +129,21 @@ function playerPass(player, type)
 
   --maybe add a wait here so skips can be added properly?
   turn_control.call("next_turn")
+end
+
+--reset the bidding back to original before the player initially selected a card
+--does not reset skips or other behavior.
+function resetBid()
+  if bid_object ~= nil and starting_bidder ~= nil then
+    bid_object.setPositionSmooth(bid_card_start_pos)
+    bid = bid_tracker
+    bid_object = nil
+    collider_board.call("kickLowerBid", bidder)
+    bidder = nil
+    collider_board.UI.setAttribute("discovery_bid", "text", "Bid: 0")
+    turn_control.call("set_turn", starting_bidder)
+    starting_bidder = nil
+  end
 end
 
 local bid_setup = false
@@ -213,19 +229,11 @@ function calculateBid(collision)
 
   local current_phase = Global.getVar("current_phase")
   local player_coins = three_ev_bag.call("calculateCoins", player_color)
-  collider_board = Global.getVar("collider_board")
 
   --this error will likely never happen
   -- if round is Discovery Round
   if current_phase ~= 4 then
     broadcastToAll("It is not the Discovery phase, you cannot bid on ejection cards!")
-    return
-  end
-
-  --check to make sure the player can afford the bid they're making
-  if player_coins < bid then
-    broadcastToAll("You do not have enough coins to bid, please end your turn.")
-    collider_board.call("kickLowerBid", player_color)
     return
   end
 
@@ -236,13 +244,27 @@ function calculateBid(collision)
       -- kick other bid figurine (physicist)
       -- and set bid value
       if bidder ~= nil then
-        collider_board.call("kickLowerBid", bidder)
         bid = bid + 1
       else
         bid = bid_tracker
       end
 
+      --check to make sure the player can afford the bid they're making
+      if player_coins < bid then
+        broadcastToAll("You do not have enough coins to bid, please end your turn.")
+        collider_board.call("kickLowerBid", player_color)
+        return
+      end
+
+      if bidder ~= nil then
+        collider_board.call("kickLowerBid", bidder)
+      end
+
+      if bidder == nil then
+        starting_bidder = player_color
+      end
       bidder = player_color
+
       collider_board.UI.setAttribute("discovery_bid", "text", "Bid: " ..bid)
     else
       broadcastToColor("You already have highest bid or have passed this round or you are trying to bid on another card. Only one card bid at a time.", player_color)
@@ -283,7 +305,6 @@ function attemptEndBid()
 
     local player_order = turn_control.call("get_player_order")
     local player_index = Global.getTable("player_index")
-    local order_player = turn_control.call("get_order_player")
 
     -- remove skips that were round only
     for i = 1, #players do
@@ -404,11 +425,11 @@ function sendToDiscard(cards)
           elseif card.type == "Card" then
             discardCard(card)
           end
-        end, i
-      )
+          end, i
+        )
+      end
     end
   end
-end
 
 
   function discardCard(card)
@@ -550,7 +571,7 @@ end
 
           if prev_card_data.name ~= current_card_data.name then
             if placement_pos[3] >= 7.00 then
-              placement_pos = {placement_pos[1] + x_mod, placement_pos[2], - y_mod, placement_pos[3]}
+              placement_pos = {placement_pos[1] + x_mod, placement_pos[2] - y_mod, placement_pos[3]}
             else
               placement_pos = {placement_pos[1], placement_pos[2], placement_pos[3] + z_mod}
             end

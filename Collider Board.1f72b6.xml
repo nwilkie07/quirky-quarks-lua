@@ -24,6 +24,7 @@
   <HorizontalLayout>
   <Button onClick="9f4d22/increaseBid" color="#FFFFFF" fontSize="60" text="+"/>
     <Text id="discovery_bid" color="#000000" fontSize="60" text="Bid: 0" rotation="0 0 180" />
+    <Button onClick="9f4d22/resetBid" color="#FFFFFF" fontSize="24" rotation="0 0 180" text="Reset"/>
   </HorizontalLayout>
 </Panel>
 

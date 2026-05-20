@@ -64,8 +64,9 @@ function calculateScore(player_color)
           card_vp = card_vp + calculateAntiHydrogen()
         elseif card_name == "Super Gluonium" then
           card_vp = card_vp + calculateSuperGluonium()
+        else
+          card_vp = card_vp + card_values[card_name]
         end
-        card_vp = card_vp + card_values[card_name]
       end
     end
   end

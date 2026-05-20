@@ -15,6 +15,7 @@ end
 
 function onCollisionEnter(collision_info)
   Global.call("updateScore", {["zone"] = zone, ["object"] = collision_info.collision_object, ["state"] = "enter"})
+  Global.call("updateGluoniumTracker", {["color"] = "Yellow", ["zone"] = zone})
 end
 
 function onCollisionExit(collision_info)

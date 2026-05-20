@@ -276,6 +276,7 @@ function onObjectLeaveScriptingZone(zone, leave_object)
 end
 
 function onObjectDrop(colorName, object)
+  if colorName == nil or object == nil then return end
   local zones = object.getZones()
   local bid = 0
   local current_phase = Global.getVar("current_phase")
@@ -284,6 +285,7 @@ function onObjectDrop(colorName, object)
 
   local coin_board_guids = Global.getTable("coin_board_guids")
   local coin_board = getObjectFromGUID(coin_board_guids[colorName])
+  if coin_board == nil then return end
   local money_text = coin_board.UI.getAttribute(string.lower(colorName) .. "_coins", "text")
   local money = tonumber(string.sub(money_text, 0, #money_text - 3))
 
@@ -307,7 +309,7 @@ function onObjectDrop(colorName, object)
           local bid = current_bid[zone_name]
           if money < bid + bid_modifiers[zone_name] then
             broadcastToAll(colorName.. " does not have enough money to make this bid!")
-            kickLowerbid(colorName)
+            kickLowerBid(colorName)
           else
             attemptBid(zone_name, bid, colorName)
           end
@@ -387,7 +389,7 @@ function attemptBid(collider, newBid, player_color)
     current_bid_color[collider] = newBidColor
     turn_control.call("add_skip", player_color)
 
-    hasColorBid[newBidColor] = True
+    hasColorBid[newBidColor] = true
   else
     -- prevent player from getting kicked for adjusting piece
     if player_color ~= current_bid_color[collider] then
@@ -422,7 +424,7 @@ function checkBidComplete()
 
   if #players == countBids() then
     turn_control.call("clear_skip")
-    wait_time = 0
+    local wait_time = 0
     for collider, player_color in pairs(current_bid_color) do
       Wait.time(function()
         dealOutColliders(collider, player_color)
@@ -496,7 +498,7 @@ if player_color ~= "none" then
 else
   for j = 1, #cards do
     Wait.time(function()
-      cards[j].setRotation({eject_rot[1], eject_rot[2], 180}, false, false)
+      cards[j].setRotation({eject_rot[1], eject_rot[2], 180})
       cards[j].setPositionSmooth({eject_pos[1], 2, eject_pos[3]}, false, false)
     end, j * 0.5)
   end

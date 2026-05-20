@@ -5,8 +5,8 @@ function onLoad()
     function_owner = buy_card,
     position = {0, 1, 0},
     rotation = {0, 0, 0},
-    width = 500,
-    height = 500,
+    width = 2000,
+    height = 800,
     color = {0.5, 0.5, 0.5, 0},
     tooltip = "Automatically build card.",
   }

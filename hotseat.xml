@@ -1,4 +1,0 @@
-<Toggle onValueChanged="onToggleHotseat" isOn="false" id="Blue" position="50 0 -21" rotation="0 0 180"/>
-<Toggle onValueChanged="onToggleHotseat" isOn="false" id="Red" position="50 -37 -21" rotation="0 0 180"/>
-<Toggle onValueChanged="onToggleHotseat" isOn="false" id="Orange" position="50 37 -21" rotation="0 0 180"/>
-<Toggle onValueChanged="onToggleHotseat" isOn="false" id="Green" position="50 74 -21" rotation="0 0 180"/>

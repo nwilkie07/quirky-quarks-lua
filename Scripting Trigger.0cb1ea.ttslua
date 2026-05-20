@@ -1,0 +1,46 @@
+
+local particles_deck = nil
+local one_ev_bag = nil
+local turn_control = nil
+
+function onLoad()
+  self.memo = "Ejection Pile"
+  particles_deck = Global.getVar("particles_deck")
+  one_ev_bag = Global.getVar("one_ev_bag")
+  turn_control = Global.getVar("turn_control")
+end
+
+function onObjectDrop(player_color, object)
+  if particles_deck == nil then return end
+  local current_player = turn_control.call("get_current_turn")
+  local current_phase = Global.getVar("current_phase")
+
+  if player_color ~= nil and object ~= nil and object.type == "Card" and object.getZones() ~= nil then
+    local zones = object.getZones()
+    for i = 1, #zones do
+      if zones[i].memo == "Ejection Pile" then
+        --update player ejections variable
+        --deal coin to player
+        if current_player ~= player_color or current_phase ~= 3 then
+          broadcastToColor("It is not your turn to eject cards or it is not the ejection phase.", player_color)
+          object.deal(1, player_color)
+          return
+        end
+
+        local ejection_allowances = particles_deck.getTable("ejection_allowances")
+        if ejection_allowances[player_color] <= 0 then
+          object.deal(1, player_color)
+          broadcastToColor("You cannot eject any more cards..", player_color)
+          return
+        end
+        ejection_allowances[player_color] = ejection_allowances[player_color] - 1
+        if ejection_allowances[player_color] < 0 then
+          ejection_allowances[player_color] = 0
+        end
+        particles_deck.setTable("ejection_allowances", ejection_allowances)
+
+        one_ev_bag.call("dealCoins", {["value"] = 1, ["player_color"] = player_color})
+      end
+    end
+  end
+end

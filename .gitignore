@@ -1,0 +1,18 @@
+# macOS
+.DS_Store
+
+# TTS temporary files
+*.bak
+*.tmp
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Logs
+*.log
+
+# Backup directories (keep source, ignore TTS backups)
+# backup-*/

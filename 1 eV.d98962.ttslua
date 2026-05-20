@@ -67,7 +67,7 @@ function dealCoins(data)
     local start_pos = {pos["x"] + x_mod, 2, pos["z"] + z_mod}
     local sort_count = 1
 
-    while sort_count < #coins do
+    while sort_count <= #coins do
       for j = 0, 5 do
         for i = 0, 3 do
           if player_color == "Green" or player_color == "Blue" then
