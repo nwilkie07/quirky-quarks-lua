@@ -1,0 +1,29 @@
+<Text id="score_button" shadow="#FFFFFF" scale="0.25 0.25 1" rotation="0 0 180" position="0 85 -21" fontSize="60" color="#000000" text="Bid: 0" visibility="hidden"/>
+
+<Panel id="esrf_panel" border="#000000" Width="200" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="0 87 -11" color="#FFFFFF" visibility="hidden">
+  <Text id="esrf_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+</Panel>
+
+<Panel id="tevatron_panel" border="#000000" Width="200" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="58.75 87 -11" color="#FFFFFF" visibility="hidden">
+  <Text id="tevatron_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+</Panel>
+
+<Panel id="slac_panel" border="#000000" Width="200" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="117.5 87 -11" color="#FFFFFF" visibility="hidden">
+  <Text id="slac_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+</Panel>
+
+<Panel id="lhc_panel" border="#000000" Width="200" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="-58.75 87 -11" color="#FFFFFF" visibility="hidden">
+  <Text id="lhc_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+</Panel>
+
+<Panel id="kekb_panel" border="#000000" Width="200" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="-117.5 87 -11" color="#FFFFFF" visibility="hidden">
+  <Text id="kekb_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+</Panel>
+
+<Panel padding="16 16 16 16" id="discovery_panel" border="#000000" Width="400" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="0 87 -11" color="#FFFFFF" visibility="hidden">
+  <HorizontalLayout>
+    <Button fontSize="24">Pass</Button>
+    <Text id="discovery_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+    <Button fontSize="60">+</Button>a
+  </HorizontalLayout>
+</Panel>

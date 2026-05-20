@@ -1,0 +1,918 @@
+color_hand_guid = {
+  ["Red"] = "0e9106",
+  ["Yellow"] = "3e5ce5",
+  ["Blue"] = "fddd12",
+  ["Green"] = "89a98c"
+}
+
+--only one use
+starting_card_positions = {
+  ["Red"] = { - 8.00, 1.00, - 9.00},
+  ["Blue"] = {14, 1.00, 9.00},
+  ["Green"] = { - 8.00, 1.00, 9.00},
+  ["Yellow"] = {14.01, 1, - 9},
+}
+
+-- research figurines
+--only one use
+figurine_guids = {
+  ["Red"] = "b4ac93",
+  ["Blue"] = "caaafc",
+  ["Green"] = "96ef5c",
+  ["Yellow"] = "b681f1"
+}
+
+-- guid to color
+player_zones = {["0e9106"] = "Red",
+  ["3e5ce5"] = "Yellow",
+  ["fddd12 "] = "Blue",
+["89a98c"] = "Green"}
+
+--boards where players place built quests
+layout_zones = {
+  ["Red"] = "f1ae5e",
+  ["Blue"] = "a157d6",
+  ["Yellow"] = "a157d6",
+  ["Green"] = "3cd4dd"
+}
+
+--build zone guids
+build_zone_guids = {
+  ["Red"] = "f1ae5e",
+  ["Yellow"] = "a157d6",
+  ["Blue"] = "bc35cd",
+  ["Green"] = "3cd4dd"
+}
+
+--coin zone guids
+coin_zone_guids = {
+  ["Red"] = "b188aa",
+  ["Yellow"] = "4f2a3f",
+  ["Blue"] = "cfbcd0",
+  ["Green"] = "bbded6"
+}
+
+build_board_guids = {
+  ["Red"] = "49e564",
+  ["Yellow"] = "929214",
+  ["Blue"] = "846103",
+  ["Green"] = "7d15f7"
+}
+
+coin_board_guids = {
+  ["Red"] = "f85969",
+  ["Yellow"] = "e8d582",
+  ["Blue"] = "28cd81",
+  ["Green"] = "44da3b"
+}
+
+card_costs = {
+  ["Antihydrogen"] = {
+    ["Gluon"] = 1,
+    ["Positron"] = 1,
+    ["Anti Up Down"] = 3,
+    ["Photon"] = 1
+  },
+  ["Blue Pion Start"] = {
+    ["Down Quark"] = 1,
+    ["Gluon"] = 1,
+    ["Anti Up Down"] = 1
+  },
+  ["Deuterium"] = {
+    ["Gluon"] = 1,
+    ["Electron"] = 1,
+    ["Photon"] = 1,
+    ["Proton"] = 1,
+    ["Neutron"] = 1
+  },
+  ["Down Annihilation"] = {
+    ["Down Quark"] = 1,
+    ["Anti Up Down"] = 1,
+    ["Photon"] = 1
+  },
+  ["E Annihilation"] = {["Positron"] = 1, ["Electron"] = 1, ["Photon"] = 1},
+  ["Green Pion Start"] = {
+    ["Up Quark"] = 1,
+    ["Gluon"] = 1,
+    ["Anti Up Down"] = 1
+  },
+  ["Gluonium"] = {["Gluon"] = 2},
+  ["Helium-3"] = {
+    ["Gluon"] = 1,
+    ["Electron"] = 2,
+    ["Photon"] = 1,
+    ["Proton"] = 2,
+    ["Neutron"] = 1
+  },
+  ["Helium-4"] = {
+    ["Gluon"] = 1,
+    ["Electron"] = 2,
+    ["Photon"] = 1,
+    ["Proton"] = 2,
+    ["Neutron"] = 2
+  },
+  ["Hydride"] = {["Electron"] = 2, ["Photon"] = 1, ["Proton"] = 1},
+  ["Hydrogen Base"] = {
+    ["Up Quark"] = 2,
+    ["Down Quark"] = 1,
+    ["Gluon"] = 1,
+    ["Electron"] = 1,
+    ["Photon"] = 1
+  },
+  ["Hydrogen Comp"] = {["Electron"] = 1, ["Photon"] = 1, ["Proton"] = 1},
+  ["Neutronium"] = {["Gluon"] = 1, ["Proton"] = 1, ["Neutron"] = 1},
+  ["Neutron"] = {["Up Quark"] = 1, ["Down Quark"] = 2, ["Gluon"] = 1},
+  ["Pion After Eject"] = {
+    ["Down Quark"] = 1,
+    ["Gluon"] = 1,
+    ["Anti Up Down"] = 1
+  },
+  ["Pion Before Eject"] = {
+    ["Up Quark"] = 1,
+    ["Gluon"] = 1,
+    ["Anti Up Down"] = 1
+  },
+  ["Positronium"] = {["Positron"] = 1, ["Electron"] = 1, ["Photon"] = 1},
+  ["Proton"] = {["Up Quark"] = 2, ["Down Quark"] = 1, ["Gluon"] = 1},
+  ["Super Gluonium"] = {["Gluon"] = 3},
+  ["Tritium"] = {
+    ["Gluon"] = 1,
+    ["Electron"] = 1,
+    ["Photon"] = 1,
+    ["Proton"] = 1,
+    ["Neutron"] = 2
+  },
+  ["Up Annihilation"] = {
+    ["Up Quark"] = 1,
+    ["Anti Up Down"] = 1,
+    ["Photon"] = 1
+  },
+  ["Wigner Crystal"] = {["Electron"] = 3}
+}
+
+card_values = {
+  ["Antihydrogen"] = 18,
+  ["Hydrogen Base"] = 20,
+  ["Hydrogen Comp"] = 22,
+  ["Helium-4"] = 75,
+  ["Helium-3"] = 59,
+  ["Neutron"] = 14,
+  ["Neutronium"] = 30,
+  ["Positronium"] = 8,
+  ["Deuterium"] = 41,
+  ["Proton"] = 12,
+  ["Gluonium"] = 2,
+  ["Hydride"] = 25,
+  ["Super Gluonium"] = 6,
+  ["Tritium"] = 57,
+  ["Up Annihilation"] = 0,
+  ["Wigner Crystal"] = 7,
+  ["E Annihilation"] = 0,
+  ["Down Annihilation"] = 4,
+  ["Pion Before Eject"] = 3,
+  ["Pion Round Start"] = 0,
+  ["Pion After Eject"] = 3
+}
+
+phase_text = {
+  [1] = "Funding",
+  [2] = "Research",
+  [3] = "Ejection",
+  [4] = "Discovery",
+  [5] = "Quest"
+}
+dice_rot = {
+  [1] = {0.00, 270.00, 0.00},
+  [2] = {0.00, 90.00, 270.00},
+  [3] = {0.00, 270.00, 90.00},
+  [4] = {0.00, 270.00, 180.00},
+  [5] = {90.00, 270.00, 0.00}
+}
+
+--change to relative to board
+phase_dice_pos = {
+  [1] = { - 26.98, 1.36, 3.01},
+  [2] = { - 26.98, 1.36, 3.54},
+  [3] = { - 26.98, 1.36, 4.07},
+  [4] = { - 26.98, 1.36, 4.63},
+  [5] = { - 26.98, 1.36, 5.20},
+}
+
+selection_cards = {
+  ["Red"] = {},
+  ["Yellow"] = {},
+  ["Blue"] = {},
+  ["Green"] = {}
+}
+
+neutrinos_in_hand = {
+  ["Red"] = {},
+  ["Yellow"] = {},
+  ["Blue"] = {},
+  ["Green"] = {}
+}
+
+local neutrino_count = 0
+
+scoring_zone = {
+  ["Red Zone"] = "True",
+  ["Blue Zone"] = "True",
+  ["Yellow Zone"] = "True",
+  ["Green Zone"] = "True",
+  ["Red Coin"] = "True",
+  ["Yellow Coin"] = "True",
+  ["Blue Coin"] = "True",
+  ["Green Coin"] = "True",
+}
+
+singleCardPowers = {
+  ["Down Annihilation"] = "none",
+  ["Up annihilation"] = "none",
+  ["Wigner Crystal"] = "none",
+  ["Pion Before Eject"] = "none",
+  ["Pion After Eject"] = "none",
+  ["Blue Pion Start"] = "none",
+  ["Green Pion Start"] = "none",
+}
+
+-- Positronium
+multiCardPowers = {
+  ["Red"] = {
+    ["Proton"] = 0,
+    ["Neutron"] = 0,
+    ["Gluonium"] = 0,
+    ["Positronium"] = 0
+  },
+  ["Blue"] = {
+    ["Proton"] = 0,
+    ["Neutron"] = 0,
+    ["Gluonium"] = 0,
+    ["Positronium"] = 0
+  },
+  ["Green"] = {
+    ["Proton"] = 0,
+    ["Neutron"] = 0,
+    ["Gluonium"] = 0,
+    ["Positronium"] = 0
+  },
+  ["Yellow"] = {
+    ["Proton"] = 0,
+    ["Neutron"] = 0,
+    ["Gluonium"] = 0,
+    ["Positronium"] = 0
+  }
+}
+
+
+current_round = 1
+current_phase = 1
+starting_physicist = nil
+
+-- zones in case decks change guid on reshuffle
+particles_zone = nil
+quest1_zone = nil
+quest2_zone = nil
+
+-- current decks
+particles_deck = nil
+quest1_deck = nil
+quest2_deck = nil
+
+-- discard pile zones
+particle_discard_zone = nil
+quest1_discard_zone = nil
+quest2_discard_zone = nil
+
+--[[ The onLoad event is called after the game save finishes loading. --]]
+-- setup variables used by many functions, call and change them here so we can change them only once
+function onLoad()
+  particles_zone = getObjectFromGUID("fd60b5")
+  quest1_zone = getObjectFromGUID("d90940")
+  quest2_zone = getObjectFromGUID("941bbf")
+
+  particles_deck = particles_zone.getObjects()[1]
+  quest1_deck = quest1_zone.getObjects()[1]
+  quest2_deck = quest2_zone.getObjects()[1]
+
+  particle_discard_zone = getObjectFromGUID("345485")
+  quest1_discard_zone = getObjectFromGUID("a0c4a3")
+  quest2_discard_zone = getObjectFromGUID("4af37c")
+end
+
+--[[ The onUpdate event is called once per frame. --]]
+function onUpdate()
+  --[[ print('onUpdate loop!') --]]
+end
+
+function isPlayerSeated(color)
+  local players = getSeatedPlayers()
+  for i = 1, #players do
+    if players[i] == color then
+      return true
+    end
+  end
+  return false
+end
+
+
+
+-- so we can prevent players from ejecting too many cards
+ejections_allowed = {}
+
+--so we can track the player with the pion_before_eject cards drawn
+before_ejection_draws = {}
+
+--so we can track the player with the pion_after_eject cards drawn
+after_ejection_draws = {}
+
+--return object reference to a players hand based on color
+function getPlayerHand(color)
+  local hand_guid = color_hand_guid[color]
+  return getObjectFromGUID(hand_guid)
+end
+
+options = {}
+function setOptions(cardType)
+  table.insert(options, cardType)
+end
+
+function toggleOption(player, value, id)
+  isOn = UI.setAttribute(id, "isOn", value)
+  attributes = UI.getAttributes(id)
+end
+
+function complexPurchase(player, value, id)
+  getObjectFromGUID("6425d0").call("complexPurchase", {player, value, id})
+end
+
+
+--variable to control if the phase/round should change after checking neutrinos
+neutrinosEndRound = false
+
+function setNeutrinosEndRound(value)
+  neutrinosEndRound = value
+  return neutrinosEndRound
+end
+
+--tracks cards quantity to prevent unnecessary calls in neutrino functions
+cards_in_hand = {
+  ["Red"] = 0,
+  ["Blue"] = 0,
+  ["Yellow"] = 0,
+  ["Green"] = 0
+}
+-- loops through hands and check if players have neutrino cards
+-- neutrino cards must be resolved immediately
+function checkForNeutrinos()
+  local players = getSeatedPlayers()
+
+  --goes through player hands to find neutrinos
+  for i = 1, #players do
+    local player_color = players[i]
+    local hand_guid = color_hand_guid[player_color]
+    local hand_objects = getObjectFromGUID(hand_guid).getObjects()
+
+    --if this hand has not changed in number of cards then don't check for neutrinos
+    if cards_in_hand[player_color] < #hand_objects then
+      for i = 1, #hand_objects do
+        local card = hand_objects[i]
+        if card.getName() == "Neutrino" then
+          table.insert(neutrinos_in_hand[player_color], card)
+          neutrino_count = neutrino_count + 1
+        end
+      end
+      cards_in_hand[player_color] = #hand_objects
+      -- call the function to give the player selection of the card
+      if #neutrinos_in_hand[player_color] > 0 then
+        handleNeutrino(player_color)
+      end
+    end
+  end
+
+  --Ends Funding phase and Research (bidding) phase
+  -- and current_phase + current_round == 2
+  if neutrino_count == 0 and neutrinosEndRound == true then
+    endPhase()
+    neutrinosEndRound = false
+  end
+end
+
+function updateGluoniumTracker()
+  local players = getSeatedPlayers()
+
+  --goes through player build zones to find build Gluonium cards
+  for i = 1, #players do
+    local player_color = players[i]
+    local build_guid = build_zone_guids[player_color]
+    local quest_cards = getObjectFromGUID(build_guid).getObjects()
+    local gluonium_tracker = {
+      ["Red"] = 0,
+      ["Blue"] = 0,
+      ["Green"] = 0,
+      ["Yellow"] = 0
+    }
+
+    local buy_card_board = getObjectFromGUID("6425d0")
+
+    -- looks through player cards to see if anyone
+    for i = 1, #quest_cards do
+      if quest_cards[i].getName() == "Gluonium" then
+        gluonium_tracker[player_color] = gluonium_tracker[player_color] + 1
+      end
+    end
+    buy_card_board.call("setGluoniumTracker", gluonium_tracker)
+  end
+end
+
+beforeEjectDrawComplete = false
+before_eject_color = "none"
+before_eject_draw = 0
+function endPhase()
+  --cannot end the phase until special cards are resolved
+  if singleCardPowers["Pion Before Eject"] ~= "none" and current_phase == 2 and beforeEjectDrawComplete == false then
+    before_eject_color = singleCardPowers["Pion Before Eject"]
+    before_eject_draw = math.floor(current_round / 2)
+    -- make a call to a function that waits to end the round after cards are drawn
+    return
+  else
+    --reset so the check is performed on each round
+    beforeEjectDrawComplete = false
+  end
+
+  if current_phase >= 5 then
+    current_phase = 1
+    onRoundChange()
+  else
+    current_phase = current_phase + 1
+
+    -- tell player to draw 2 cards
+    if singleCardPowers["Green Pion Start"] ~= "none" and current_phase == 3 then
+      broadcastToAll(singleCardPowers["Pion After Eject"].. " must draw " ..math.floor(current_round).. " cards.", Table)
+    end
+
+    onPhaseChange()
+  end
+end
+
+draw_card_tracker = {
+  ["Yellow"] = {},
+  ["Red"] = {},
+  ["Blue"] = {},
+  ["Green"] = {}
+}
+
+function onPhaseChange()
+  players = getSeatedPlayers()
+  board = getObjectFromGUID("1f72b6")
+  phase_die = getObjectFromGUID("1050fc")
+
+  phase_die.setRotationSmooth(dice_rot[current_phase])
+  phase_die.setPositionSmooth(phase_dice_pos[current_phase])
+
+  --Phase one is handled by onRoundChange
+  if current_phase == 2 then
+    --Research Phase, show bid buttons
+    board.UI.setAttribute("slac_panel", "visibility", "")
+    board.UI.setAttribute("tevatron_panel", "visibility", "")
+    board.UI.setAttribute("esrf_panel", "visibility", "")
+    board.UI.setAttribute("lhc_panel", "visibility", "")
+
+    if #players ~= 2 then
+      board.UI.setAttribute("kekb_panel", "visibility", "")
+    end
+
+    broadcastToAll("Research phase starts. " ..starting_physicist.. " bids first.")
+    Turns.turn_color = starting_physicist
+  elseif current_phase == 3 then
+    --Ejection Phase send message to each player on discard amount
+    board.UI.setAttribute("slac_panel", "visibility", "hidden")
+    board.UI.setAttribute("tevatron_panel", "visibility", "hidden")
+    board.UI.setAttribute("esrf_panel", "visibility", "hidden")
+    board.UI.setAttribute("lhc_panel", "visibility", "hidden")
+    board.UI.setAttribute("kekb_panel", "visibility", "hidden")
+
+    particles_deck.call("onEjectionPhaseStart")
+  elseif current_phase == 4 then
+    board.UI.setAttribute("discovery_panel", "visibility", "")
+    local ejection_pile = getObjectFromGUID("970865")
+    ejection_pile.call("setupResearchPhase")
+    --Discovery Phase
+  elseif current_phase == 5 then
+    --Quest Phase
+  end
+
+  UI.setAttribute("round_tracker", "text", "Round " ..current_round.. ": " .. phase_text[current_phase] .. " Phase")
+end
+
+player_draws = {
+  ["Red"] = 0,
+  ["Blue"] = 0,
+  ["Green"] = 0,
+  ["Yellow"] = 0
+}
+
+function onRoundChange()
+  Turns.turn_color = starting_physicist
+  starting_physicist = Turns.getNextTurnColor()
+  Turns.turn_color = starting_physicist
+
+  -- look through player completed quest cards and record gluonium card_cost
+  updateGluoniumTracker()
+
+  if current_round >= 5 then
+    --end game and calculate scores and announce WINNER
+  else
+    current_round = current_round + 1
+    local players = getSeatedPlayers()
+
+    if #players >= 3 then
+      particles_deck.call("four_player_deal")
+    else
+      particles_deck.call("two_player_deal")
+    end
+
+    player_draws = {
+      ["Red"] = 1,
+      ["Blue"] = 1,
+      ["Green"] = 1,
+      ["Yellow"] = 1
+    }
+
+    -- check for and update player draw_counts if they have these special cards
+    if singleCardPowers["Green Pion Start"] == "none" then
+      local color = singleCardPowers["Green Pion Start"]
+      player_draws[color] = player_draws[color] + math.floor(current_round / 2)
+    end
+    -- two if statements in case the player has both cards
+    if singleCardPowers["Blue Pion Start"] == "none" then
+      local color = singleCardPowers["Blue Pion Start"]
+      player_draws[color] = player_draws[color] + math.floor(current_round / 2) end
+
+      --loop to deal money to each player and tell them how many cards to draw
+      for i = 1, #players do
+        local player_color = players[i]
+
+        --players get 3 eV each round or more if they have Up Annhilation
+        if singleCardPowers["Up Annihilation"] == player_color then
+          dealMoney(3 + current_round)
+        else
+          dealMoney(3)
+        end
+
+        broadcastToColor("Draw " ..draw_count.. " card(s).", player_color)
+      end
+
+    end
+  end
+
+  --generic dealMoney function that places the money in front of the players boards
+  function dealMoney(value, player_color)
+    local three_bag = getObjectFromGUID("66bc96")
+    local one_bag = getObjectFromGUID("d98962")
+    local coin_zone = getObjectFromGUID(coin_zone_guids[player_color])
+    local rot = coin_zone.getRotation()
+    local pos = coin_zone.getPosition()
+    local y_mod = 5
+    local x_start = -2.26
+    local x_mod = 1.5
+    -- depends on board side
+    if rot["y"] == 180 then
+      y_mod = -5
+      x_start = 2.26
+      x_mod = -1.5
+    end
+
+    local money = value
+    local count = 1
+
+    while money > 0 do
+      if money >= 3 then
+        three_bag.takeObject({
+          position = {pos[1] + x_start, 2, pos[3] + y_mod},
+          rotation = rot,
+          smooth = true,
+        })
+        money = money - 3
+        x_start = x_start + x_mod
+      else
+        one_bag.takeObject({
+          position = {pos[1] + x_start, 2, pos[3] + y_mod},
+          rotation = rot,
+          smooth = true,
+        })
+        money = money - 1
+        x_start = x_start + x_mod
+      end
+    end
+  end
+
+  --sets a table of objects to hidden from all but the provided player
+  function hideFromPlayers(objects, player_color)
+    local players = getSeatedPlayers()
+    for i = 1, #players do
+      if players[i] == player_color then
+        table.remove(players, i)
+        break
+      end
+    end
+    for j = 1, #objects do
+      objects[j].setHiddenFrom(players)
+    end
+  end
+
+  -- places the neutrino in front of the player to make a choice (buttons on cards)
+  -- attaches button to cards to resolve (move cards around) after a player selects a card
+  function handleNeutrino(player_color)
+    local neutrino_card = table.remove(neutrinos_in_hand[player_color])
+
+    local board = getObjectFromGUID(build_board_guids[player_color])
+    local pos = board.getPosition()
+    local rot = board.getRotation()
+
+    local x_mod = -2
+    local y_height = pos["y"] + 1
+    local z_mod = -6
+
+    if rot["y"] == 180 then
+      z_mod = 6
+      x_mod = 2
+    end
+
+    neutrino_card.setPosition({pos["x"] - x_mod, y_height, pos["z"] + z_mod})
+    neutrino_card.setRotation({rot["x"], rot["y"], 0})
+
+    local particle1 = particles_deck.takeObject({
+      position = {pos["x"], y_height, pos["z"] + z_mod},
+      rotation = {rot["x"], rot["y"], 0},
+      smooth = true,
+      top = true,
+    })
+    particle1.createButton({
+      click_function = "resolveNeutrino",
+      label = "Choose this particle.",
+      width = 400,
+      height = 800,
+      color = {0.5, 0.5, 0.5},
+      tooltip = "Select this card"
+    })
+
+    local particle2 = particles_deck.takeObject({
+      position = {pos["x"] + x_mod, y_height, pos["z"] + z_mod},
+      rotation = {rot["x"], rot["y"], 0},
+      smooth = true,
+      top = true,
+    })
+    particle2.createButton({
+      click_function = "resolveNeutrino",
+      label = "Choose this particle.",
+      width = 400,
+      height = 800,
+      color = {0.5, 0.5, 0.5},
+      tooltip = "Select this card"
+    })
+
+    hideFromPlayers({particle1, particle2}, player_color)
+
+    table.insert(selection_cards[player_color], particle1)
+    table.insert(selection_cards[player_color], particle2)
+    table.insert(selection_cards[player_color], neutrino_card)
+  end
+
+  --called on card selection to move selected card into the players hand
+  -- and the 2 other cards into the discard pile
+  function resolveNeutrino(click_obj, player_color)
+    local cards = selection_cards[player_color]
+    local particle_discard_pos = particle_discard_zone.getPosition()
+
+    --if a player selects a neutrino add it to the array to work through
+    if click_obj.getName() == "Neutrino" then
+      table.insert(neutrinos_in_hand[player_color], click_obj)
+      neutrino_count = neutrino_count + 1
+    end
+
+    for i = 1, #cards do
+      if cards[i].getButtons() then
+        cards[i].removeButton(0)
+      end
+      if cards[i].getGUID() ~= click_obj.getGUID() then
+        Wait.time(
+          function()
+            cards[i].setPositionSmooth(particle_discard_pos)
+          end,
+          i
+        )
+      else
+        cards[i].deal(1, player_color)
+      end
+    end
+
+    neutrino_count = neutrino_count - 1
+
+    -- recursively works through other neutrinos a player hand
+    selection_cards[player_color] = {}
+    if #neutrinos_in_hand[player_color] > 0 then
+      handleNeutrino(player_color)
+    end
+
+    cards_in_hand[player_color] = #Player[player_color].getHandObjects()
+
+    --Ends Funding phase and Research (bidding) phase
+    -- and current_phase + current_round == 2
+    if neutrino_count == 0 and neutrinosEndRound == true then
+      endPhase()
+      neutrinosEndRound = false
+    end
+  end
+
+  function getPlayerHandItems(color)
+    local hand_items = {}
+    local guid_items = {}
+    local objects = Player[color].getHandObjects(1)
+    if #objects > 0 then
+      for i = 1, #objects do
+        local object = objects[i]
+        local name = object.getName()
+        if hand_items[name] ~= nil then
+          hand_items[name] = hand_items[name] + 1
+        else
+          hand_items[name] = 1
+        end
+        if guid_items[name] == nil then
+          guid_items[name] = {object.guid}
+        else
+          table.insert(guid_items[name], object.guid)
+        end
+      end
+    end
+    return {hand_items, guid_items}
+  end
+
+  function handleSpecialCard(player_color, object)
+    local card_name = object.getName()
+    if card_name == nil then
+      return
+    end
+
+    if singleCardPowers[card_name] ~= nil or multiCardPowers[player_color][card_name] ~= nil or card_name == "E Annihilation" then
+
+      -- gain 9 eV immediately
+      if card_name == "E Annihilation" then
+        dealMoney(9, player_color)
+        return
+      end
+    end
+
+    --nil value error?
+    for key, value in pairs(singleCardPowers) do
+      if card_name == key and specialCardColor[card_name] ~= nil then
+        specialCardColor[card_name] = player_color
+        return
+      end
+    end
+
+    if multiCardPowers[player_color][card_name] ~= nil then
+      multiCardPowers[player_color][card_name] = multiCardPowers[player_color][card_name] + 1
+    end
+  end
+
+  --loops through and checks if draws are compelete in Phase 1
+  function drawsComplete()
+    count = player_draws["Yellow"] + player_draws["Green"] + player_draws["Red"] + player_draws["Blue"]
+    if count <= 0 then
+      endPhase()
+    end
+  end
+
+  function onObjectEnterZone(zone, enter_object)
+    if enter_object ~= nil and zone ~= nil then
+      if zone.type == hand and enter_object.type == "Card" then
+        if current_phase == 2 and after_eject_color ~= "none" then
+          -- make no changes when its a neutrino as the neutrino will retrigger this function
+          if enter_object.getName() ~= "Neutrino" then
+            before_eject_draw = before_eject_draw - 1
+          end
+          if before_eject_draw <= 0 then
+            beforeEjectDrawComplete = true
+            endPhase()
+          end
+        end
+
+        -- monitors draws to know when to end the phase
+        if current_Phase == 1 then
+          -- check if all cards have been drawn and end phase
+          if enter_object.getName() ~= "Neutrino" then
+            player_draws[zone.color] = player_draws[zone.color] - 1
+          end
+          drawsComplete()
+        end
+
+        if current_round ~= 1 and current_phase == 1 then
+          -- make no changes when its a neutrino as the neutrino will retrigger this function
+          if enter_object.getName() ~= "Neutrino" then
+            before_eject_draw = before_eject_draw - 1
+          end
+          if before_eject_draw <= 0 then
+            beforeEjectDrawComplete = true
+            endPhase()
+          end
+        end
+
+        if current_round + current_phase ~= 2 and enter_object.getName() == "Neutrino" then
+          -- called as neutrinos must be dealt with immediately
+          Wait.time(
+            function()
+              checkForNeutrinos()
+            end,
+          1)
+        end
+      end
+
+      if scoring_zone[zone.getName()] == "True" then
+        Wait.time(function()
+          updateScore(zone, enter_object)
+        end, 2)
+      end
+    end
+  end
+
+  function onObjectLeaveZone(zone, leave_object)
+    if leave_object ~= nil and zone ~= nil then
+      if scoring_zone[zone.getName()] then
+        Wait.time(function()
+          updateScore(zone, enter_object)
+        end, 1)
+      end
+    end
+  end
+
+  function updateScore(zone, object)
+    if object == nil or zone == nil then
+      return
+    end
+
+    local name = zone.getName()
+    local score = 0
+    local score_button = getObjectFromGUID("652e27")
+
+    -- updating score when items are placed in zone
+    local area_name = string.sub(name, #name - 3)
+    local color = string.sub(name, 1, #name - 5)
+    local build_board = getObjectFromGUID(build_board_guids[color])
+    local objects = zone.getObjects()
+
+    if area_name == "Zone" and #objects > 0 then
+      score = score_button.call("calculateScore", color)
+      build_board.call("updateScoreText", score)
+      handleSpecialCard(color, object)
+    end
+
+    if area_name == "Coin" and #objects > 0 then
+      coin_board = getObjectFromGUID(coin_board_guids[color])
+      value = score_button.call("calculateCoins", color)
+      score = score_button.call("calculateScore", color)
+      coin_board.call("updateCoinText", value)
+      build_board.call("updateScoreText", score)
+    end
+  end
+
+  --2n runtime
+  -- checking if the object is being held by a player
+  function isHeldByPlayer(object)
+    local held_objects = {}
+    local green_obj = Player.Green.getHoldingObjects()
+    local red_obj = Player.Red.getHoldingObjects()
+    local blue_obj = Player.Blue.getHoldingObjects()
+    local yellow_obj = Player.Yellow.getHoldingObjects()
+
+    if green_obj ~= nil then
+      spreadAndInsert(green_obj, held_objects)
+    end
+
+    if red_obj ~= nil then
+      spreadAndInsert(red_obj, held_objects)
+    end
+
+    if blue_obj ~= nil then
+      spreadAndInsert(blue_obj, held_objects)
+    end
+
+    if yellow_obj ~= nil then
+      spreadAndInsert(yellow_obj, held_objects)
+    end
+
+    if held_objects ~= nil and object ~= nil then
+      for i = 1, #held_objects do
+        if held_objects[i].getGUID() == object.getGUID() then
+          return true
+        end
+      end
+    end
+
+    return false
+  end
+
+  function spreadAndInsert(values, insertTable)
+    for i = 1, #values do
+      table.insert(insertTable, values[i])
+    end
+  end

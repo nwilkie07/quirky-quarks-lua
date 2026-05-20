@@ -1,0 +1,4 @@
+-- simple helper function to update the users display of their current money (eV)
+function updateCoinText(value)
+  self.UI.setAttribute("yellow_coins", "text", value .." eV")
+end

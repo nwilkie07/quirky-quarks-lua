@@ -1,0 +1,66 @@
+<!-- Xml UI. See documentation: https://api.tabletopsimulator.com/ui/introUI/ -->
+<!-- Automatically adjust sizing based on Toggles Visible-->
+<!--ADD CANCEL BUTTON-->
+
+<VerticalLayout rectAlignment="UpperLeft" Width="500" Height="70">
+  <Text id="round_tracker" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Round 1: Funding Phase</Text>
+</VerticalLayout>
+
+<VerticalLayout Width="200" Height="37" position="-230 467 0">
+  <Button id="pass_bid" onClick="9f4d22/playerPass(round)" tooltipPosition="Below" color="#FFFFFF" tooltip="Passes current bid. You will continue to bid on other cards." fontSize="24" shadow="#000000" outline="#000000">Pass Bid</Button>
+</VerticalLayout>
+
+<VerticalLayout Width="200" Height="37" position="0 415 0">
+  <Button onClick="9f4d22/increaseBid" id="increase_bid" tooltipPosition="Below" tooltip="Danger: Increases your bid beyond the automatic +1." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Increase Bid</Button>
+</VerticalLayout>
+
+<VerticalLayout Width="200" Height="37" position="230 467 0">
+  <Button id="pass_round" onClick="9f4d22/playerPass(all)" tooltipPosition="Below" tooltip="Danger: Click to no longer participate in the Discovery Phase!" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Pass Round</Button>
+</VerticalLayout>
+
+<Panel id="build_selector" rectAlignment="middleCenter" Width="150" Height="300" background="#FFFFFF">
+  <TableLayout cellBackgroundColor="#FFFFFF" rowBackgroundColor="#FFFFFF" autoCalculateHeight="true">
+    <Row id="row0" active="false" preferredHeight="50">
+      <Cell>
+        <Text id="indicator_text" color="#323232">Select</Text>
+      </Cell>
+    </Row>
+    <Row id="row1" preferredHeight="50" active="false">
+      <Cell>
+        <Text id="text1">Option 1</Text>
+        <Toggle id="toggle1" isOn="false" onValueChanged="toggleOption"></Toggle>
+      </Cell>
+    </Row>
+    <Row id="row2" preferredHeight="50" active="false">
+      <Cell>
+        <Text id="text2">Option 2</Text>
+        <Toggle id="toggle2" isOn="false" onValueChanged="toggleOption"></Toggle>
+      </Cell>
+    </Row>
+    <Row id="row3" preferredHeight="50" active="false">
+      <Cell>
+        <Text id="text3">Option 3</Text>
+        <Toggle id="toggle3" isOn="false" onValueChanged="toggleOption"></Toggle>
+      </Cell>
+    </Row>
+    <Row id="row4" preferredHeight="50" active="false">
+      <Cell>
+        <Text id="text4">Option 4</Text>
+        <Toggle id="toggle4" isOn="false" onValueChanged="toggleOption"></Toggle>
+      </Cell>
+    </Row>
+    <Row id="row5" preferredHeight="50" active="false">
+      <Cell>
+        <Text id="text5">Option 5</Text>
+        <Toggle id="toggle5" isOn="false" onValueChanged="toggleOption"></Toggle>
+      </Cell>
+    </Row>
+    <Row id="row6" preferredHeight="50" active="false">
+      <Cell>
+        <Button id="submit" onClick="complexPurchase">
+          Submit
+        </Button>
+      </Cell>
+    </Row>
+  </TableLayout>
+</Panel>

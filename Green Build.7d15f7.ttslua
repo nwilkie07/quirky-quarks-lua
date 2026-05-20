@@ -1,0 +1,4 @@
+-- simple helper function to update the users total score from their completed quests and money
+function updateScoreText(score)
+  self.UI.setAttribute("green_score", "text", "Current Score: " ..score)
+end

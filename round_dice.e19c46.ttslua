@@ -1,0 +1,20 @@
+local round_number = 1
+local board = getObjectFromGUID("1f72b6")
+local round_cube = getObjectFromGUID("7b4c8a")
+
+-- add a Table object that has the round positions for the cube
+
+function round_counter()
+
+end
+
+function increment_round()
+  --move cube, change text, increment round
+  round_number = round_number + 1
+  round_cube.setPosition(board.getPosition())
+
+end
+
+function getRound()
+  return round_number
+end

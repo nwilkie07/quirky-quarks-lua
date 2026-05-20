@@ -1,0 +1,3 @@
+function onLoad()
+  self.memo = "Quest 1 Deck"
+end

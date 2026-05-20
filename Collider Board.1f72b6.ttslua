@@ -1,0 +1,379 @@
+local turn_order = {}
+local hasColorBid = {}
+
+--add a check to ensure enough cards in the deck
+function two_player_deal(round)
+  --add round control
+  setupTurnOrder()
+  -- setup slac
+  deal_particles(-4.43, 1, 1, "slac")
+
+  -- setup Tevatron
+  deal_particles(-2.18, 2, 1, "tevatron")
+
+  --setup ESRF
+  deal_particles(0.03, 3, 1, "esrf")
+
+  --setup LHC
+  deal_particles(2.27, 4, 1, "lhc")
+
+end
+
+function four_player_deal()
+  --add round control
+
+  --{-24.39, 0.96, 0.39} to {-19.04, 0.97, -4.04} to {-19.09, 0.97, -1.79}
+  setupTurnOrder()
+  -- setup slac
+  deal_particles(-4.43, 2, 1, "slac")
+
+  -- setup Tevatron
+  deal_particles(-2.18, 3, 1, "tevatron")
+
+  --setup ESRF
+  deal_particles(0.03, 3, 1, "esrf")
+
+  --setup LHC
+  deal_particles(2.27, 4, 1, "lhc")
+
+  --setup SuperKEKB
+  deal_particles(4.48, 4, 1, "kekb")
+
+end
+
+-- a way to track turn order during bidding in the research phase
+function setupTurnOrder()
+  order = getSeatedPlayers()
+  for i = 1, #order do
+    turn_order[order[i]] = i
+    hasColorBid[order[i]] = false
+  end
+end
+
+--make sure to reset after dealing out to players
+local bid_cards = {
+  ["slac"] = {},
+  ["tevatron"] = {},
+  ["esrf"] = {},
+  ['lhc'] = {},
+  ['kekb'] = {}
+}
+
+function deal_particles(z_mod, count, round, collider)
+  local board = getObjectFromGUID("1f72b6")
+  local pos = board.getPosition()
+  local rot = board.getRotation()
+  local particles = Global.getVar("particles_deck")
+  local quest_one = Global.getVar("quest1_deck")
+  local quest_two = Global.getVar("quest2_deck")
+
+  local x_position = pos[1] + 5.35
+
+  for i = 1, count do
+    local mod = i - 1
+    local taken_particle = particles.takeObject({
+      position = {x_position + mod, pos[2] + mod, pos[3] + z_mod},
+      flip = true,
+      rotation = rot,
+      index = 0,
+      top = true,
+    })
+    table.insert(bid_cards[collider], taken_particle)
+  end
+
+  local quest_mod = count + 1
+  if round <= 3 then
+    local taken_quest1 = quest_one.takeObject({
+      position = {x_position + quest_mod, pos[2] + quest_mod, pos[3] + z_mod},
+      flip = true,
+      rotation = rot,
+      index = 0,
+      top = true,
+    })
+    table.insert(bid_cards[collider], taken_quest1)
+  end
+
+  if round > 3 then
+    local taken_quest2 = quest_two.takeObject({
+      position = {x_position + quest_mod, pos[2] + quest_mod, pos[3] + z_mod},
+      flip = true,
+      rotation = rot,
+      index = 0,
+      top = true,
+    })
+    table.insert(bid_cards[collider], taken_quest2)
+  end
+
+end
+
+
+local slac_bid_locations = {
+  [1] = { - 21.73, 2.06, - 4.97},
+  [2] = { - 22.00, 2.06, - 3.88},
+  [3] = { - 22.29, 2.06, - 4.91},
+  [4] = { - 22.58, 2.06, - 3.88},
+  [5] = { - 22.91, 2.06, - 4.91},
+  [6] = { - 23.18, 2.06, - 3.88},
+  [7] = { - 23.49, 2.06, - 4.91},
+  [8] = { - 23.78, 2.06, - 3.88},
+  [9] = { - 24.07, 2.06, - 4.91},
+  [10] = { - 24.41, 2.06, - 3.88}
+}
+
+local current_bid_color = {
+  ["slac"] = "none",
+  ["tevatron"] = "none",
+  ["esrf"] = "none",
+  ["lhc"] = "none",
+  ["kekb"] = "none",
+}
+
+local current_bid = {
+  ["slac"] = 0,
+  ["tevatron"] = 0,
+  ["esrf"] = 0,
+  ["lhc"] = 0,
+  ["kekb"] = 0,
+}
+
+local z_mod = 2.175
+
+function deal_out_bids()
+  for key, cards in pairs(bid_cards) do
+    local player_color = current_bid_color[key]
+    local ejection_pile = getObjectFromGUID("970865")
+    if player_color == "none" then
+      --deal cards to ejection pile
+      for i = 1, #cards do
+        cards[i].setRotation(ejection_pile.getRotation())
+        cards[i].setPositionSmooth(ejection_pile.getPosition())
+      end
+    end
+
+  end
+
+  bid_cards = {
+    ["slac"] = {},
+    ["tevatron"] = {},
+    ["esrf"] = {},
+    ["lhc"] = {},
+    ["kekb"] = {}
+  }
+end
+
+function onObjectLeaveScriptingZone(zone, leave_figurine)
+  -- do work to set bid back to old bid if object remains or 0 if not
+  local zone_name = zone.getName()
+
+  if zone_name == "slac" or zone_name == "kekb" or zone_name == "lhc" or zone_name == "tevatron" or zone_name == "esrf" then
+    if not hasFigurine(zone) then
+      current_bid[zone_name] = 0
+      current_bid_color[zone_name] = "none"
+      self.UI.setAttribute(zone_name .. "_bid", "text", "Bid: 0")
+    end
+  end
+
+end
+
+local distance_mods = {
+  ["slac"] = 0,
+  ["tevatron"] = z_mod,
+  ["esrf"] = z_mod * 2,
+  ["lhc"] = z_mod * 3,
+  ["kekb"] = z_mod * 4
+}
+
+function onObjectDrop(colorName, object)
+  local zones = object.getZones()
+  local bid = 0
+  local current_phase = Global.getVar("current_phase")
+
+  if object.type == "Figurine" and current_phase == 2 and #zones > 0 then
+    for i = 1, #zones do
+      local zone_name = zones[i].getName()
+
+      if colorName ~= Turns.turn_color then
+        broadcastToColor("It is not your turn to bid!", colorName)
+        kickLowerBid(colorName)
+        return
+      end
+      -- make sure adjusting figurine doesn't get it kicked
+      -- current_bid_color[zone_name] ~= object.getName() and
+      if distance_mods[zone_name] ~= nil then
+        bid = calculateClosestBid(object, distance_mods[zone_name])
+
+        local coin_board_guids = Global.getTable("coin_board_guids")
+        local coin_board = getObjectFromGUID(coin_board_guids[colorName])
+        local money_text = coin_board.UI.getAttribute(string.lower(colorName) .. "_coins", "text")
+        local money = tonumber(string.sub(money_text, 0, #money_text - 3))
+
+        if money < bid then
+          broadcastToAll(colorName.. " does not have enough money to make this bid!")
+          kickLowerBid(colorName)
+        else
+          attemptBid(zone_name, bid, object)
+        end
+      end
+    end
+  end
+end
+
+function hasFigurine(zone)
+  local objects = zone.getObjects()
+
+  for i = 1, #objects do
+    if objects[i].type == "Figurine" then
+      return true
+    end
+  end
+  return false
+end
+
+function calculateClosestBid(figurine, z_mod)
+  local fig = figurine.getPosition()
+  local distance = 100
+  local bid = 0
+
+  for k, v in pairs(slac_bid_locations) do
+    local current = math.sqrt(math.pow((v[1] - fig[1]), 2) + math.pow((v[2] - fig[2]), 2) + math.pow(((v[3] + z_mod) - fig[3]), 2))
+    if current < distance then
+      bid = k
+      distance = current
+    end
+  end
+  return bid
+end
+
+function attemptBid(collider, newBid, object)
+  if current_bid[collider] < newBid then
+    self.UI.setAttribute(collider .. "_bid", "text", "Bid: " ..newBid)
+
+    local oldBidColor = current_bid_color[collider]
+
+    if oldBidColor ~= "none" and oldBidColor ~= object.getName() then
+      hasColorBid[oldBidColor] = false
+      kickLowerBid(oldBidColor)
+    end
+
+    local newBidColor = object.getName()
+    current_bid[collider] = newBid
+    current_bid_color[collider] = newBidColor
+
+    hasColorBid[newBidColor] = True
+  else
+    kickLowerBid(object.getName())
+  end
+  checkBidComplete()
+end
+
+-- moves "researcher" figurine back near player of that color
+function kickLowerBid(color)
+  local figurine_guids = Global.getTable("figurine_guids")
+  local object = getObjectFromGUID(figurine_guids[color])
+
+  if color == "Red" then
+    object.setPositionSmooth({ - 21.00, 1.81, - 10.36})
+  end
+  if color == "Yellow" then
+    object.setPositionSmooth({21.00, 1.96, - 10.32})
+  end
+  if color == "Blue" then
+    object.setPositionSmooth({21.00, 1.96, 10.31})
+  end
+  if color == "Green" then
+    object.setPositionSmooth({ - 21.00, 1.96, 10.28})
+  end
+end
+
+function checkBidComplete()
+  local players = getSeatedPlayers()
+
+  if #players == countBids() then
+    print("implement bid completion phase")
+
+    wait_time = 0
+    for collider, player_color in pairs(current_bid_color) do
+      Wait.time(function()
+        dealOutColliders(collider, player_color)
+      end, wait_time)
+      wait_time = wait_time + 2.5
+    end
+    Wait.time(function()
+      Global.setVar("neutrinosEndRound", true)
+      Global.call("checkForNeutrinos")
+    end, wait_time + 1)
+  end
+end
+
+function dealOutColliders(collider, player_color)
+  local cards = bid_cards[collider]
+  local ejection_pile = getObjectFromGUID("970865")
+  local eject_pos = ejection_pile.getPosition()
+  local eject_rot = ejection_pile.getRotation()
+  if #cards == 0 then
+    return
+  end
+
+  if player_color ~= "none" then
+    for i = 1, #cards do
+      Wait.time(function()
+        cards[i].deal(1, player_color)
+        spendCoins(collider, player_color)
+        kickLowerBid(player_color)
+      end, i * 0.5)
+    end
+  else
+    for j = 1, #cards do
+      Wait.time(function()
+        cards[j].setRotation({eject_rot[1], eject_rot[2], 180}, false, false)
+        cards[j].setPositionSmooth({eject_pos[1], 2, eject_pos[3]}, false, false)
+      end, j * 0.5)
+    end
+  end
+end
+
+--{-26.59, 3.09, -6.93} 3Ev Bag
+-- 1ev Bag
+function spendCoins(collider, player_color)
+  local cost = current_bid[collider]
+  local coin_zone_guids = Global.getTable("coin_zone_guids")
+  local coins = getObjectFromGUID(coin_zone_guids[player_color]).getObjects()
+
+  local threes = {}
+  local ones = {}
+
+  local three_ev_bag = getObjectFromGUID("66bc96")
+
+  local one_ev_bag = getObjectFromGUID("d98962")
+
+  for i = 1, #coins do
+    if coins[i].memo == "three" then
+      table.insert(threes, coins[i])
+    end
+    if coins[i].memo == "one" then
+      table.insert(ones, coins[i])
+    end
+  end
+
+  while cost > 0 do
+    if cost >= 3 and #threes > 0 then
+      local three_coin = table.remove(threes)
+      three_ev_bag.putObject(three_coin)
+      cost = cost - 3
+    else
+      local one_coin = table.remove(ones)
+      one_ev_bag.putObject(one_coin)
+      cost = cost - 1
+    end
+  end
+end
+
+function countBids()
+  local bid_count = 0
+  for k, v in pairs(current_bid) do
+    if v > 0 then
+      bid_count = bid_count + 1
+    end
+  end
+  return bid_count
+end

@@ -1,0 +1,6 @@
+function onPickUp(player_color)
+  if player_color ~= "Blue" then
+    broadcastToColor("This is not your physicist. Do not touch!", player_color)
+    self.drop()
+  end
+end

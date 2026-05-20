@@ -1,0 +1,3 @@
+<!--Text that shows on the build board indicating the players total score based on money and completed quests!-->
+
+<Text id="blue_score" visibility="Blue" position="90 90 22" scale="0.25 0.25 1" fontSize="48" rotation="180 0 0" color="#FFFFFF" text="Current Score: 0"/>

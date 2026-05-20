@@ -1,0 +1,3 @@
+function onLoad()
+  self.memo = "3 eV"
+end
