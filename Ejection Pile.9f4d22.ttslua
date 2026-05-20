@@ -236,6 +236,9 @@ function attemptEndBid()
     hasStartedBid[bidder] = 1
     local bid_count = hasStartedBid["Yellow"] + hasStartedBid["Red"] + hasStartedBid["Blue"] + hasStartedBid["Green"]
 
+    local temp_order = Global.getVar("player_order")
+    local player_index = Global.getTable("player_index")
+
     -- has everyone had a chance to bid at the current starting bid value?
     -- if so increment the round which increases the starting bid by 1
     if bid_count == #players then
@@ -250,8 +253,7 @@ function attemptEndBid()
     end
 
 
-    local temp_order = Global.getVar("player_order")
-    local player_index = Global.getTable("player_index")
+
     -- check which players should still be skipped by internal turn controls
     -- resetting turns
     for i = 1, #temp_order do
@@ -262,7 +264,16 @@ function attemptEndBid()
       end
     end
 
-    Turns.order = temp_order
+    -- set the next person who needs to bid by shifting the player_order
+    local new_order = {}
+    local old_order = temp_order
+    print(temp_order)
+    for k = 1, k <= bid_count do
+      table.insert(new_order, 1, table.remove(old_order, k))
+    end
+
+    print(new_order)
+    Turns.order = new_order
 
     -- reset variables
     bid = bid_round
@@ -277,6 +288,7 @@ function attemptEndBid()
       end
     end
   end
+
   if passCount == #players then
     -- discovery phase is over, perform cleanup
     local discovery_zone = getObjectFromGUID("6c7a71")

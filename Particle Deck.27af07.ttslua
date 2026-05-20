@@ -143,8 +143,8 @@ function ejectCard(player_color, position, object)
   local single_card_powers = Global.getTable("singleCardPowers")
   local down_annihilation_color = single_card_powers["Down Annihilation"]
   local pion_after_eject = single_card_powers["Pion After Eject"]
-  local eject_deck = Global.getVar("eject_deck")
-  local eject_deck_location = eject_deck.getPosition()
+  local eject_zone = getObjectFromGUID("0cb1ea")
+  local eject_zone_location = eject_zone.getPosition()
 
   local zones = object.getZones()
   local phase = Global.getVar("current_phase")
@@ -168,7 +168,7 @@ function ejectCard(player_color, position, object)
     object.setRotation({0, 180, 180})
     object.setPosition(eject_locations[player_color])
     --set location again for smooth animation
-    object.setPositionSmooth({eject_deck_location[1], 2, eject_deck_location[3]})
+    object.setPositionSmooth({eject_zone_location[1], 2, eject_zone_location[3]})
 
     --one coin per card ejected
     --only pay out coins when ejections are complete??
