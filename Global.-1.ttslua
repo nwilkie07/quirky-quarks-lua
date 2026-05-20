@@ -304,6 +304,17 @@ function onUpdate()
   --[[ print('onUpdate loop!') --]]
 end
 
+--called when people bid on an object in the discovery phase
+function onObjectCollisionEnter(object, collision_info)
+  log(collision_info)
+  local collision_object = collision_info.collision_object
+
+  if (collision_object.type == "Card" or collision_object.type == "Deck") and object.memo == "physicist" then
+    local ejection_pile = getObjectFromGUID("9f4d22")
+    ejection_pile.call("calculateBid", {["player_color"] = object.getName(), ["object"] = collision_object})
+  end
+end
+
 function isPlayerSeated(color)
   local players = getSeatedPlayers()
   for i = 1, #players do
@@ -482,7 +493,6 @@ function onPhaseChange()
     end
 
     broadcastToAll("Research phase starts. " ..starting_physicist.. " bids first.")
-    Turns.turn_color = starting_physicist
   elseif current_phase == 3 then
     --Ejection Phase send message to each player on discard amount
     board.UI.setAttribute("slac_panel", "visibility", "hidden")
@@ -494,13 +504,13 @@ function onPhaseChange()
     particles_deck.call("onEjectionPhaseStart")
   elseif current_phase == 4 then
     board.UI.setAttribute("discovery_panel", "visibility", "")
-    local ejection_pile = getObjectFromGUID("970865")
-    ejection_pile.call("setupResearchPhase")
+    local ejection_pile = getObjectFromGUID("9f4d22")
+    ejection_pile.call("setupDiscoveryPhase")
     --Discovery Phase
   elseif current_phase == 5 then
     --Quest Phase
   end
-
+  Turns.turn_color = starting_physicist
   UI.setAttribute("round_tracker", "text", "Round " ..current_round.. ": " .. phase_text[current_phase] .. " Phase")
 end
 
@@ -748,24 +758,28 @@ function onRoundChange()
   end
 
   function handleSpecialCard(player_color, object)
+    if object == nil then
+      return
+    end
+
     local card_name = object.getName()
     if card_name == nil then
       return
     end
 
-    if singleCardPowers[card_name] ~= nil or multiCardPowers[player_color][card_name] ~= nil or card_name == "E Annihilation" then
-
+    if singleCardPowers[card_name] ~= nil then
       -- gain 9 eV immediately
       if card_name == "E Annihilation" then
+        log("made it in to deal money")
+        log(card_name)
         dealMoney(9, player_color)
         return
       end
     end
 
-    --nil value error?
     for key, value in pairs(singleCardPowers) do
-      if card_name == key and specialCardColor[card_name] ~= nil then
-        specialCardColor[card_name] = player_color
+      if card_name == key and singleCardPowers[card_name] ~= nil then
+        singleCardPowers[card_name] = player_color
         return
       end
     end
@@ -828,9 +842,11 @@ function onRoundChange()
       end
 
       if scoring_zone[zone.getName()] == "True" then
-        Wait.time(function()
-          updateScore(zone, enter_object)
-        end, 2)
+        Wait.time(
+          function()
+            updateScore(zone, enter_object)
+          end,
+        2)
       end
     end
   end
@@ -838,9 +854,11 @@ function onRoundChange()
   function onObjectLeaveZone(zone, leave_object)
     if leave_object ~= nil and zone ~= nil then
       if scoring_zone[zone.getName()] then
-        Wait.time(function()
-          updateScore(zone, enter_object)
-        end, 1)
+        Wait.time(
+          function()
+            updateScore(zone, enter_object)
+          end,
+        2)
       end
     end
   end

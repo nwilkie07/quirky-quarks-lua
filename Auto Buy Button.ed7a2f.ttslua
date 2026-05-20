@@ -1,7 +1,8 @@
 function onLoad()
+  local buy_card = getObjectFromGUID("6425d0")
   params = {
-    click_function = "attemptPurchase",
-    function_owner = self,
+    click_function = "purchaseCard",
+    function_owner = buy_card,
     position = {0, 1, 0},
     rotation = {0, 0, 0},
     width = 500,
@@ -10,9 +11,4 @@ function onLoad()
     tooltip = "Automatically build card.",
   }
   self.createButton(params)
-end
-
-function attemptPurchase(obj, color)
-  -- calls function that handles "purchasing" a quest card
-  getObjectFromGUID("6425d0").call("purchaseCard", color)
 end

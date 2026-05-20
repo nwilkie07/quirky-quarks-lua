@@ -126,7 +126,7 @@ function performPurchase()
     gluonium_tracker = gluonium
   end
 
-  function purchaseCard(color)
+  function purchaseCard(clicked_object, color)
     local current_phase = Global.getVar("current_phase")
 
     if current_phase ~= 5 then

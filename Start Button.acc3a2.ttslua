@@ -50,90 +50,94 @@ function start_game()
     return
   else
     Global.call("setNeutrinosEndRound", true)
-      initial_setup(particles)
+    initial_setup(particles)
+  end
+
+  if #players == 2 then
+    Wait.time(
+      function()
+        deal_coins(particles, True)
+      end
+    , 1)
+    Wait.time(
+      function()
+        board.call("two_player_deal")
+      end
+    , 2)
+  end
+
+  if (#players == 3) or (#players == 4) then
+    Wait.time(
+      function()
+        board.call("four_player_deal")
+      end
+    , 1)
+
+    Wait.time(
+      function()
+        deal_coins(particles, false)
+      end
+    , 2)
+  end
+end
+
+function initial_setup(particles)
+  -- deal out cards and quest to people
+  particles.shuffle()
+  particles.deal(3)
+  quest_one = getObjectFromGUID("4ebb58")
+  quest_one.shuffle()
+  quest_one.deal(1)
+  board = getObjectFromGUID("1f72b6")
+
+
+  --shuffling quest 2 deck
+  getObjectFromGUID("a5d775").shuffle()
+
+  -- resolve Neutrinos, end phase after this action
+  Wait.time(
+    function()
+      Global.call("checkForNeutrinos")
     end
+  , 5)
+end
 
-    if #players == 2 then
-      Wait.time(
-        function()
-          deal_coins(particles, True)
-        end, 1)
-        Wait.time(
-          function()
-            board.call("two_player_deal")
-          end, 2)
-        end
+function deal_coins(particles, isTwoPlayer)
 
-        if (#players == 3) or (#players == 4) then
-          Wait.time(
-            function()
-              board.call("four_player_deal")
-            end, 1)
+  --places starting money in coin areas
+  coin_guids = Global.getTable("coin_board_guids")
+  players = getSeatedPlayers()
+  for i = 1, #players do
+    coin_area = getObjectFromGUID(coin_guids[players[i]])
+    pos = coin_area.getPosition()
+    x_mod = 1.5
+    y = pos["y"] + 1
+    z_mod = pos["z"] + 1.5
 
-            Wait.time(
-              function()
-                deal_coins(particles, false)
-              end
-            , 2)
-          end
-        end
+    one_ev.takeObject({
+      position = {pos["x"] - x_mod, y, pos["z"]}
+    })
+    one_ev.takeObject({
+      position = {pos["x"], y, pos["z"]}
+    })
+    if isTwoPlayer ~= True then
+      one_ev.takeObject({
+        position = {pos["x"] + x_mod, y, pos["z"]}
+      })
+      three_ev.takeObject({
+        position = {pos["x"] + x_mod, y, z_mod}
+      })
+    end
+    three_ev.takeObject({
+      position = {pos["x"] - x_mod, y, z_mod}
+    })
+    three_ev.takeObject({
+      position = {pos["x"], y, z_mod}
+    })
 
-        function initial_setup(particles)
-          -- deal out cards and quest to people
-          particles.shuffle()
-          particles.deal(3)
-          quest_one = getObjectFromGUID("4ebb58")
-          quest_one.shuffle()
-          quest_one.deal(1)
-          board = getObjectFromGUID("1f72b6")
+    Wait.time(function()
+      self.destruct()
+    end, 7)
 
-
-          --shuffling quest 2 deck
-          getObjectFromGUID("a5d775").shuffle()
-
-          -- resolve Neutrinos, end phase after this action
-          Wait.time(
-            function()
-              Global.call("checkForNeutrinos")
-            end, 5)
-          end
-
-          function deal_coins(particles, isTwoPlayer)
-
-            --places starting money in coin areas
-            coin_guids = Global.getTable("coin_board_guids")
-            players = getSeatedPlayers()
-            for i = 1, #players do
-              coin_area = getObjectFromGUID(coin_guids[players[i]])
-              pos = coin_area.getPosition()
-              x_mod = 1.5
-              y = pos["y"] + 1
-              z_mod = pos["z"] + 1.5
-
-              one_ev.takeObject({
-                position = {pos["x"] - x_mod, y, pos["z"]}
-              })
-              one_ev.takeObject({
-                position = {pos["x"], y, pos["z"]}
-              })
-              if isTwoPlayer ~= True then
-                one_ev.takeObject({
-                  position = {pos["x"] + x_mod, y, pos["z"]}
-                })
-                three_ev.takeObject({
-                  position = {pos["x"] + x_mod, y, z_mod}
-                })
-              end
-              three_ev.takeObject({
-                position = {pos["x"] - x_mod, y, z_mod}
-              })
-              three_ev.takeObject({
-                position = {pos["x"], y, z_mod}
-              })
-
-              Wait.time(function()
-                self.destruct()
-              end, 7)
-
-            end
-          end
+  end
+end

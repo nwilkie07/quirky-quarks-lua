@@ -11,11 +11,11 @@
 </VerticalLayout>
 
 <VerticalLayout Width="200" Height="37" position="0 415 0">
-  <Button onClick="9f4d22/increaseBid" id="increase_bid" tooltipPosition="Below" tooltip="Danger: Increases your bid beyond the automatic +1." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Increase Bid</Button>
+  <Button onClick="970865/increaseBid" id="increase_bid" tooltipPosition="Below" tooltip="Danger: Increases your bid beyond the automatic +1." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Increase Bid</Button>
 </VerticalLayout>
 
 <VerticalLayout Width="200" Height="37" position="230 467 0">
-  <Button id="pass_round" onClick="9f4d22/playerPass(all)" tooltipPosition="Below" tooltip="Danger: Click to no longer participate in the Discovery Phase!" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Pass Round</Button>
+  <Button id="pass_round" onClick="970865/playerPass(all)" tooltipPosition="Below" tooltip="Danger: Click to no longer participate in the Discovery Phase!" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Pass Round</Button>
 </VerticalLayout>
 
 <Panel id="build_selector" rectAlignment="middleCenter" Width="150" Height="300" background="#FFFFFF">

@@ -141,7 +141,7 @@ local z_mod = 2.175
 function deal_out_bids()
   for key, cards in pairs(bid_cards) do
     local player_color = current_bid_color[key]
-    local ejection_pile = getObjectFromGUID("970865")
+    local ejection_pile = getObjectFromGUID("9f4d22")
     if player_color == "none" then
       --deal cards to ejection pile
       for i = 1, #cards do
@@ -307,7 +307,7 @@ end
 
 function dealOutColliders(collider, player_color)
   local cards = bid_cards[collider]
-  local ejection_pile = getObjectFromGUID("970865")
+  local ejection_pile = getObjectFromGUID("9f4d22")
   local eject_pos = ejection_pile.getPosition()
   local eject_rot = ejection_pile.getRotation()
   if #cards == 0 then

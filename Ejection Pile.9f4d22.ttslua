@@ -20,21 +20,9 @@ local passes = {
   ["Yellow"] = "none"
 }
 
-local hasStartedBid = {
-  ["Red"] = false,
-  ["Blue"] = false,
-  ["Yellow"] = false,
-  ["Green"] = false
-}
-
--- the value of the current bid
 local bid = 1
--- the color of the player with highest bid
 local bidder = nil
--- the round number which only increases after each player gets to bid once
--- controls the cost of starting bids
 local bid_round = 1
--- the card being bid upon
 local bid_object = nil
 local collider_board = nil
 local bid_card_guids = {}
@@ -213,18 +201,14 @@ function attemptEndBid()
     --give card to player and reset bid variables
     bid_card_guids[bid_object.getGUID()] = nil
     bid_object.deal(1, bidder)
-
     collider_board.call("kickLowerBid", bidder)
-    collider_board.call("spendCoins", {["cost"] = bid, ["player_color"] = bidder})
 
-    -- reset variables
+
     bid_round = bid_round + 1
     bid = bid_round
     bid_object = nil
-    bidder = "none"
 
-    collider_board.UI.setAttribute("discovery_bid", text, "Bid: 0")
-
+    log(passes)
     for color, val in pairs(passes) do
       if val == "round" then
         passes[color] = "none"

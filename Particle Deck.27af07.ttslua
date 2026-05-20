@@ -80,7 +80,6 @@ local eject_locations = {
   ["Blue"] = {8.00, 1.00, 8.00},
   ["Green"] = { - 14.00, 1.00, 8.00}
 }
-local eject_deck_location = { - 4.00, 1.00, 0.00}
 
 local ejection_allowances = {
   ["Red"] = 0,
@@ -89,6 +88,7 @@ local ejection_allowances = {
   ["Blue"] = 0
 }
 
+-- something wrong in this function
 function onEjectionPhaseStart()
   local players = getSeatedPlayers()
 
@@ -107,7 +107,7 @@ function onEjectionPhaseStart()
 
     card_count = 0
     print("Implement check for special cards")
-    min_ejection = ejection_allowances[player_color] - positronium
+    local min_ejection = ejection_allowances[player_color] - positronium
     if min_ejection == 0 then
       broadcastToColor("You may eject between 0 and " ..ejection_allowances[player_color].. " card(s).", player_color)
     elseif min_ejection == ejection_allowances[player_color] then
@@ -143,6 +143,7 @@ function ejectCard(player_color, position, object)
   local single_card_powers = Global.getTable("singleCardPowers")
   local down_annihilation_color = single_card_powers["Down Annihilation"]
   local pion_after_eject = single_card_powers["Pion After Eject"]
+  local eject_deck_location = getObjectFromGUID("9f4d22").getPosition()
 
   local zones = object.getZones()
   local phase = Global.getVar("current_phase")
