@@ -31,9 +31,11 @@ local bid_object = nil
 local collider_board = nil
 local bid_card_guids = {}
 local three_ev_bag = nil
+local turn_control = nil
 
 function onLoad()
   three_ev_bag = Global.getVar("three_ev_bag")
+  turn_control = getObjectFromGUID("90061a")
 end
 
 --checks if player has the money and it is their bid turn, then increases the bid by +1
@@ -63,17 +65,17 @@ end
 -- type: the pass type "round" or "all"
 function playerPass(player, type)
   local collider_board = getObjectFromGUID("1f72b6")
-  local current_order = Turns.order
-  local player_index = Global.getTable("player_index")
+  local skip_player = turn_control.getTable("skip_player")
+  local player_order = turn_control.getTable("player_order")
 
   --reset everything if bidder is passing
-  -- check if there is someone left to bid?
+  -- check if there is someone left to bid happens below
+  -- return card to pile or otherwise (NOT COMPLETE)
   if player.color == bidder then
     bid = bid_round
     bidder = nil
     bid_object = nil
     collider_board.call("kickLowerBid", player.color)
-    return
   end
 
   local current_phase = Global.getVar("current_phase")
@@ -81,18 +83,17 @@ function playerPass(player, type)
     passes[player.color] = type
 
     -- cannot remove the final player from the turn system
-    if #current_order <= 1 then
+    if #skip_player >= #player_order - 1 then
       attemptEndBid()
       return
     end
 
     --remove this player from the internal turn control for this bidding phase
-    table.remove(current_order, player_index[player.color])
-    Turns.order = current_order
+    turn_control.call("add_skip", player.color)
     -- if it is the turn of the passing players
     -- find next viable player/bidder
-    if Turns.turn_color == player.color then
-      Turns.turn_color = Turns.getNextTurnColor()
+    if turn_control.call("get_current_turn") == player.color then
+      turn_control.call("next_turn")
     end
     attemptEndBid()
   else
@@ -203,7 +204,7 @@ function calculateBid(collision)
       bid = bid + 1
       collider_board.UI.setAttribute("discovery_bid", "text", "Bid: " ..bid)
 
-      attemptEndBid()
+      attemptEndBid() -- does this need to be here
     else
       broadcastToColor("You already have highest bid or have passed this round or you are trying to bid on another card. Only one card bid at a time.", player_color)
     end
@@ -236,8 +237,9 @@ function attemptEndBid()
     hasStartedBid[bidder] = 1
     local bid_count = hasStartedBid["Yellow"] + hasStartedBid["Red"] + hasStartedBid["Blue"] + hasStartedBid["Green"]
 
-    local temp_order = Global.getVar("player_order")
+    local player_order = turn_control.getTable("player_order")
     local player_index = Global.getTable("player_index")
+    local order_player = turn_control.getTable("order_player")
 
     -- has everyone had a chance to bid at the current starting bid value?
     -- if so increment the round which increases the starting bid by 1
@@ -256,24 +258,27 @@ function attemptEndBid()
 
     -- check which players should still be skipped by internal turn controls
     -- resetting turns
-    for i = 1, #temp_order do
-      local player_color = temp_order[i]
+
+    -- clear skips first, then re-add players who have skipped the whole phase
+    turn_control.call("clear_skip")
+
+    for i = 1, #order_player do
+      local player_color = order_player[i]
 
       if passes[player_color] == "all" then
-        table.remove(temp_order, player_index[player_color])
+        turn_control.call("add_skip", player_color)
       end
     end
 
     -- set the next person who needs to bid by shifting the player_order
-    local new_order = {}
-    local old_order = temp_order
-    print(temp_order)
-    for k = 1, k <= bid_count do
-      table.insert(new_order, 1, table.remove(old_order, k))
+    --WHAT TO DO HERE?
+    local order_player = turn_control.getTable("order_player")
+    for n=1, #order_player do
+      if hasStartedBid[order_player[n]] == 0 then
+        turn_control.call("set_turn", order_player[n])
+        break
+      end
     end
-
-    print(new_order)
-    Turns.order = new_order
 
     -- reset variables
     bid = bid_round
@@ -295,7 +300,7 @@ function attemptEndBid()
     local cards = discovery_zone.getObjects()
     --all players are turned back on in the turn system
     local player_order = Global.getVar("player_order")
-    Turns.order = player_order
+    turn_control.call("clear_skip")
 
     sendToDiscard(cards)
     Global.call("endPhase")

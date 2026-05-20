@@ -491,7 +491,8 @@ draw_card_tracker = {
 
 --being called twice?
 function onPhaseChange()
-  players = getSeatedPlayers()
+  local turn_control = getObjectFromGUID("90061a")
+  local players = getSeatedPlayers()
 
   phase_die.setRotationSmooth(dice_rot[current_phase])
   phase_die.setPositionSmooth(phase_dice_pos[current_phase])
@@ -504,7 +505,7 @@ function onPhaseChange()
     collider_board.UI.setAttribute("esrf_panel", "visibility", "")
     collider_board.UI.setAttribute("lhc_panel", "visibility", "")
 
-    if #players ~= 2 then
+    if #players == 4 then
       collider_board.UI.setAttribute("kekb_panel", "visibility", "")
     end
 
@@ -525,7 +526,7 @@ function onPhaseChange()
   elseif current_phase == 5 then
     --Quest Phase
   end
-  Turns.turn_color = starting_physicist
+  turn_control.call("set_turn", starting_physicist)
   UI.setAttribute("round_tracker", "text", "Round " ..current_round.. ": " .. phase_text[current_phase] .. " Phase")
 end
 
@@ -537,9 +538,9 @@ player_draws = {
 }
 
 function onRoundChange()
-  Turns.turn_color = starting_physicist
-  starting_physicist = Turns.getNextTurnColor()
-  Turns.turn_color = starting_physicist
+  local turn_control = getObjectFromGUID("90061a")
+  turn_control.call("set_turn", starting_physicist)
+  starting_physicist = turn_control.call("next_turn")
 
   -- look through player completed quest cards and record gluonium card_cost
   updateGluoniumTracker()
@@ -637,8 +638,8 @@ function handleNeutrino(player_color)
     label = "Choose this particle.",
     width = 400,
     height = 800,
-    color = {0.5, 0.5, 0.5},
-    tooltip = "Select this card"
+    tooltip = "Select this card",
+    color = {0, 0, 0, 0}
   })
 
   local particle2 = particles_deck.takeObject({
@@ -652,8 +653,8 @@ function handleNeutrino(player_color)
     label = "Choose this particle.",
     width = 400,
     height = 800,
-    color = {0.5, 0.5, 0.5},
-    tooltip = "Select this card"
+    tooltip = "Select this card",
+    color = {0, 0, 0, 0}
   })
 
   hideFromPlayers({particle1, particle2}, player_color)

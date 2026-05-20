@@ -1,22 +1,36 @@
 <!-- Xml UI. See documentation: https://api.tabletopsimulator.com/ui/introUI/ -->
-<!-- Automatically adjust sizing based on Toggles Visible-->
+<!-- Automatically adjust sizing based on Toggles Visible  -->
 <!--ADD CANCEL BUTTON-->
 
 <VerticalLayout rectAlignment="UpperLeft" Width="500" Height="70">
   <Text id="round_tracker" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Round 1: Funding Phase</Text>
 </VerticalLayout>
 
-<VerticalLayout Width="200" Height="37" position="-230 467 0">
+<VerticalLayout Width="200" Height="37" position="-230 467 0" active="false">
   <Button id="pass_bid" onClick="9f4d22/playerPass(round)" tooltipPosition="Below" color="#FFFFFF" tooltip="Passes current bid. You will continue to bid on other cards." fontSize="24" shadow="#000000" outline="#000000">Pass Bid</Button>
 </VerticalLayout>
 
-<VerticalLayout Width="200" Height="37" position="0 415 0">
+<VerticalLayout Width="200" Height="37" position="0 415 0" active="false">
   <Button onClick="9f4d22/increaseBid" id="increase_bid" tooltipPosition="Below" tooltip="Danger: Increases your bid beyond the automatic +1." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Increase Bid</Button>
 </VerticalLayout>
 
-<VerticalLayout Width="200" Height="37" position="230 467 0">
+<VerticalLayout Width="200" Height="37" position="230 467 0" active="false">
   <Button id="pass_round" onClick="9f4d22/playerPass(all)" tooltipPosition="Below" tooltip="Danger: Click to no longer participate in the Discovery Phase!" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Pass Round</Button>
 </VerticalLayout>
+
+<Panel anchorMin="0 0" anchorMax="1 0.91">
+<Panel Width="200" Height="37" rectAlignment="upperCenter">
+  <Button id="change_turn" onClick="90061a/next_turn" tooltipPosition="Below" tooltip="Click to end your turn." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">End Your Turn</Button>
+  <Button id="turn_indicator" tooltipPosition="Below" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">Players Turn</Button>
+</Panel>
+</Panel>
+
+<Panel anchorMin="0 0" anchorMax="1 0.91">
+<Panel Width="200" Height="37" rectAlignment="upperCenter">
+  <Button id="end_eject" onClick="" tooltipPosition="Below" tooltip="Click when you are done ejecting cards." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="">I'm Done Ejecting Cards</Button>
+</Panel>
+</Panel>
+
 
 <Panel id="build_selector" rectAlignment="middleCenter" Width="150" Height="300" background="#FFFFFF">
   <TableLayout cellBackgroundColor="#FFFFFF" rowBackgroundColor="#FFFFFF" autoCalculateHeight="true">

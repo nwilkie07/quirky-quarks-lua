@@ -39,6 +39,7 @@ end
 --deal behavior unchecked
 function four_player_deal()
   --add round control
+  local players = getSeatedPlayers()
 
   --{-24.39, 0.96, 0.39} to {-19.04, 0.97, -4.04} to {-19.09, 0.97, -1.79}
   setupTurnOrder()
@@ -67,13 +68,14 @@ function four_player_deal()
     end,
   6)
 
-  Wait.time(
-    function()
-      --setup SuperKEKB
-      deal_particles(4.48, 4, 1, "kekb")
-    end,
-  8.5)
-
+  if #players == 4 then
+    Wait.time(
+      function()
+        --setup SuperKEKB
+        deal_particles(4.48, 4, 1, "kekb")
+      end,
+    8.5)
+  end
 end
 
 -- a way to track turn order during bidding in the research phase
@@ -189,6 +191,14 @@ local current_bid = {
 }
 
 local z_mod = 2.175
+--to control when a 10 eV chip has been added for higher bidding
+local bid_modifiers = {
+  ["slac"] = 0,
+  ["tevatron"] = 0,
+  ["esrf"] = 0,
+  ["lhc"] = 0,
+  ["kekb"] = 0,
+}
 
 function deal_out_bids()
   for key, cards in pairs(bid_cards) do
@@ -213,11 +223,25 @@ function deal_out_bids()
   }
 end
 
-function onObjectLeaveScriptingZone(zone, leave_figurine)
+local distance_mods = {
+  ["slac"] = 0,
+  ["tevatron"] = z_mod,
+  ["esrf"] = z_mod * 2,
+  ["lhc"] = z_mod * 3,
+  ["kekb"] = z_mod * 4
+}
+
+--ADD FUNCITION TO UPDATE BID
+function onObjectLeaveScriptingZone(zone, leave_object)
   -- do work to set bid back to old bid if object remains or 0 if not
   local zone_name = zone.getName()
 
   if zone_name == "slac" or zone_name == "kekb" or zone_name == "lhc" or zone_name == "tevatron" or zone_name == "esrf" then
+    if leave_object.getName() == "10 eV" and bid_modifiers[zone_name] ~= 0 then
+      current_bid[zone_name] = current_bid[zone_name] - bid_modifiers[zone_name]
+      bid_modifiers[zone_name] = 0
+      self.UI.setAttribute(zone_name .. "_bid", "text", "Bid: " .. current_bid[zone_name])
+    end
     if not hasFigurine(zone) then
       current_bid[zone_name] = 0
       current_bid_color[zone_name] = "none"
@@ -227,24 +251,49 @@ function onObjectLeaveScriptingZone(zone, leave_figurine)
 
 end
 
-local distance_mods = {
-  ["slac"] = 0,
-  ["tevatron"] = z_mod,
-  ["esrf"] = z_mod * 2,
-  ["lhc"] = z_mod * 3,
-  ["kekb"] = z_mod * 4
-}
-
 function onObjectDrop(colorName, object)
   local zones = object.getZones()
   local bid = 0
   local current_phase = Global.getVar("current_phase")
+  local turn_control = getObjectFromGUID("90061a")
+  local current_turn = turn_control.call("get_current_turn")
+
+  local coin_board_guids = Global.getTable("coin_board_guids")
+  local coin_board = getObjectFromGUID(coin_board_guids[colorName])
+  local money_text = coin_board.UI.getAttribute(string.lower(colorName) .. "_coins", "text")
+  local money = tonumber(string.sub(money_text, 0, #money_text - 3))
+
+  if object.getName() == "10 eV" and current_phase == 2 and #zones > 0 then
+    for i = 1, #zones do
+      local zone_name = zones[i].getName()
+
+      if bid_modifiers[zone_name] ~= 10 then
+        if distance_mods[zone_name] ~= nil then
+          if colorName ~= current_turn then
+            broadcastToColor("It is not your turn to bid!", colorName)
+            object.setPosition({ - 27, 3, - 9}) -- kick 10 eV token off board
+            return
+          end
+          bid_modifiers[zone_name] = 10
+          local bid_color = current_bid_color[zone_name]
+          local bid = current_bid[zone_name]
+          if money < bid + bid_modifiers[zone_name] then
+            broadcastToAll(colorName.. " does not have enough money to make this bid!")
+            kickLowerbid(colorName)
+          else
+            attemptBid(zone_name, bid, colorName)
+          end
+        end
+      end
+
+    end
+  end
 
   if object.type == "Figurine" and current_phase == 2 and #zones > 0 then
     for i = 1, #zones do
       local zone_name = zones[i].getName()
 
-      if colorName ~= Turns.turn_color then
+      if colorName ~= current_turn and modifier == nil then
         broadcastToColor("It is not your turn to bid!", colorName)
         kickLowerBid(colorName)
         return
@@ -252,18 +301,13 @@ function onObjectDrop(colorName, object)
       -- make sure adjusting figurine doesn't get it kicked
       -- current_bid_color[zone_name] ~= object.getName() and
       if distance_mods[zone_name] ~= nil then
-        bid = calculateClosestBid(object, distance_mods[zone_name])
+        bid = calculateClosestBid(object, distance_mods[zone_name], zone_name)
 
-        local coin_board_guids = Global.getTable("coin_board_guids")
-        local coin_board = getObjectFromGUID(coin_board_guids[colorName])
-        local money_text = coin_board.UI.getAttribute(string.lower(colorName) .. "_coins", "text")
-        local money = tonumber(string.sub(money_text, 0, #money_text - 3))
-
-        if money < bid then
+        if money < bid + bid_modifiers[zone_name] then
           broadcastToAll(colorName.. " does not have enough money to make this bid!")
           kickLowerBid(colorName)
         else
-          attemptBid(zone_name, bid, object)
+          attemptBid(zone_name, bid, colorName)
         end
       end
     end
@@ -281,7 +325,7 @@ function hasFigurine(zone)
   return false
 end
 
-function calculateClosestBid(figurine, z_mod)
+function calculateClosestBid(figurine, z_mod, zone_name)
   local fig = figurine.getPosition()
   local distance = 100
   local bid = 0
@@ -296,24 +340,32 @@ function calculateClosestBid(figurine, z_mod)
   return bid
 end
 
-function attemptBid(collider, newBid, object)
-  if current_bid[collider] < newBid then
-    self.UI.setAttribute(collider .. "_bid", "text", "Bid: " ..newBid)
+function attemptBid(collider, newBid, player_color)
+  local bid_mod = bid_modifiers[collider]
+  local turn_control = getObjectFromGUID("90061a")
+  if current_bid[collider] < newBid + bid_mod then
+    self.UI.setAttribute(collider .. "_bid", "text", "Bid: " ..newBid + bid_mod)
 
     local oldBidColor = current_bid_color[collider]
 
-    if oldBidColor ~= "none" and oldBidColor ~= object.getName() then
+    if oldBidColor ~= "none" and oldBidColor ~= player_color then
       hasColorBid[oldBidColor] = false
       kickLowerBid(oldBidColor)
+      turn_control.call("remove_skip", oldBidColor)
     end
 
-    local newBidColor = object.getName()
-    current_bid[collider] = newBid
+    local newBidColor = player_color
+    current_bid[collider] = newBid + bid_mod
     current_bid_color[collider] = newBidColor
+    turn_control.call("add_skip", player_color)
 
     hasColorBid[newBidColor] = True
   else
-    kickLowerBid(object.getName())
+    -- prevent player from getting kicked for adjusting piece
+    if player_color ~= current_bid_color[collider] then
+      turn_control.call("remove_skip", player_color)
+      kickLowerBid(player_color)
+    end
   end
   checkBidComplete()
 end
@@ -339,8 +391,10 @@ end
 
 function checkBidComplete()
   local players = getSeatedPlayers()
+  local turn_control = getObjectFromGUID("90061a")
 
   if #players == countBids() then
+    turn_control.call("clear_skip")
     wait_time = 0
     for collider, player_color in pairs(current_bid_color) do
       Wait.time(function()
@@ -371,7 +425,7 @@ function dealOutColliders(collider, player_color)
         cards[i].deal(1, player_color)
         local cost = current_bid[collider]
         local one_ev_bag = Global.getVar("one_ev_bag")
-        one_ev_bag.call(spendCoins, {["cost"] = cost, ["player_color"] = player_color})
+        one_ev_bag.call("spendCoins", {["cost"] = cost, ["player_color"] = player_color})
         kickLowerBid(player_color)
       end, i * 0.5)
     end

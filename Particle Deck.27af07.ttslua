@@ -87,7 +87,27 @@ local ejection_allowances = {
   ["Green"] = 0,
   ["Blue"] = 0
 }
-
+local end_button_visible = {}
+-- controls the end eject button visibility
+function update_button_visibility(player_color)
+  local players = end_button_visible
+  local visibility_set = ""
+  for i = 1, #players do
+    if players[i] == player_color then
+      table.remove(players, i)
+      break
+    end
+  end
+  -- create visiblity set for XML UI element
+  for j = 1, #players do
+    if j == 1 then
+      visibility_set = visibility_set .. players[j]
+    else
+      visibility_set = visibility_set .. "|" .. players[j]
+    end
+  end
+  Global.UI.setAttributes("end_eject", {active = true, visibility = visibility_set})
+end
 -- something wrong in this function, triggering twice for first player
 function onEjectionPhaseStart()
   local players = getSeatedPlayers()
@@ -110,11 +130,24 @@ function onEjectionPhaseStart()
     local min_ejection = ejection_allowances[player_color] - positronium
     if min_ejection == 0 then
       broadcastToColor("You may eject between 0 and " ..ejection_allowances[player_color].. " card(s).", player_color)
+      table.insert(end_button_visible, player_color)
     elseif min_ejection == ejection_allowances[player_color] then
       broadcastToColor("You must eject " .. ejection_allowances[player_color].. " cards.", player_color)
     else
       broadcastToColor("You must eject at least " ..min_ejection.. " card(s). But you can eject up to " ..ejection_allowances[player_color].. " card(s).", player_color)
     end
+  end
+  --turn on button for players that can choose how many they eject
+  update_button_visibility("")
+end
+
+function setEjectionsToZero(player_color)
+  ejection_allowances[player_color] = 0
+
+  local ejections_remaining = ejection_allowances["Yellow"] + ejection_allowances["Blue"] + ejection_allowances["Green"] + ejection_allowances["Red"]
+
+  if ejections_remaining == 0 then
+    ejectionEndSteps()
   end
 end
 
@@ -163,6 +196,11 @@ function ejectCard(player_color, position, object)
     local one_ev_bag = Global.getVar("one_ev_bag")
     local coin_boards = Global.getTable("coin_board_guids")
     ejection_allowances[player_color] = ejection_allowances[player_color] - 1
+
+    if ejection_allowances[player_color] == 0 then
+      --remove player end button (if they have it)
+      update_button_visibility(player_color)
+    end
 
     --remove from hand instantly
     object.setRotation({0, 180, 180})
