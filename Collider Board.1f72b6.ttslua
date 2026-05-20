@@ -5,39 +5,74 @@ local hasColorBid = {}
 function two_player_deal(round)
   --add round control
   setupTurnOrder()
+
   -- setup slac
   deal_particles(-4.43, 1, 1, "slac")
 
-  -- setup Tevatron
-  deal_particles(-2.18, 2, 1, "tevatron")
+  Wait.time(
+    function()
+      -- setup Tevatron
+      deal_particles(-2.18, 2, 1, "tevatron")
+    end,
+    1
+  )
 
-  --setup ESRF
-  deal_particles(0.03, 3, 1, "esrf")
+  Wait.time(
+    function()
+      --setup ESRF
+      deal_particles(0.03, 3, 1, "esrf")
+    end,
+    2.5
+  )
 
-  --setup LHC
-  deal_particles(2.27, 4, 1, "lhc")
+  Wait.time(
+    function()
+      --setup LHC
+      deal_particles(2.27, 4, 1, "lhc")
+    end,
+    4.5
+  )
+
 
 end
 
+--deal behavior unchecked
 function four_player_deal()
   --add round control
 
   --{-24.39, 0.96, 0.39} to {-19.04, 0.97, -4.04} to {-19.09, 0.97, -1.79}
   setupTurnOrder()
+
   -- setup slac
   deal_particles(-4.43, 2, 1, "slac")
 
-  -- setup Tevatron
-  deal_particles(-2.18, 3, 1, "tevatron")
+  Wait.time(
+    function()
+      -- setup Tevatron
+      deal_particles(-2.18, 3, 1, "tevatron")
+    end,
+  1.5)
 
-  --setup ESRF
-  deal_particles(0.03, 3, 1, "esrf")
+  Wait.time(
+    function()
+      --setup ESRF
+      deal_particles(0.03, 3, 1, "esrf")
+    end,
+  3.5)
 
-  --setup LHC
-  deal_particles(2.27, 4, 1, "lhc")
+  Wait.time(
+    function()
+      --setup LHC
+      deal_particles(2.27, 4, 1, "lhc")
+    end,
+  6)
 
-  --setup SuperKEKB
-  deal_particles(4.48, 4, 1, "kekb")
+  Wait.time(
+    function()
+      --setup SuperKEKB
+      deal_particles(4.48, 4, 1, "kekb")
+    end,
+  8.5)
 
 end
 
@@ -60,7 +95,7 @@ local bid_cards = {
 }
 
 function deal_particles(z_mod, count, round, collider)
-  local board = getObjectFromGUID("1f72b6")
+  local board = Global.getVar("collider_board")
   local pos = board.getPosition()
   local rot = board.getRotation()
   local particles = Global.getVar("particles_deck")
@@ -70,38 +105,55 @@ function deal_particles(z_mod, count, round, collider)
   local x_position = pos[1] + 5.35
 
   for i = 1, count do
-    local mod = i - 1
-    local taken_particle = particles.takeObject({
-      position = {x_position + mod, pos[2] + mod, pos[3] + z_mod},
-      flip = true,
-      rotation = rot,
-      index = 0,
-      top = true,
-    })
-    table.insert(bid_cards[collider], taken_particle)
+    local wait_time = (i - 1) * 0.5
+    Wait.time(
+      function()
+        local mod = i - 1
+        local taken_particle = particles.takeObject({
+          position = {x_position + mod, pos[2] + mod, pos[3] + z_mod},
+          flip = true,
+          rotation = rot,
+          index = 0,
+          top = true,
+        })
+        table.insert(bid_cards[collider], taken_particle)
+      end,
+      wait_time
+    )
   end
 
-  local quest_mod = count + 1
+  local quest_mod = count
   if round <= 3 then
-    local taken_quest1 = quest_one.takeObject({
-      position = {x_position + quest_mod, pos[2] + quest_mod, pos[3] + z_mod},
-      flip = true,
-      rotation = rot,
-      index = 0,
-      top = true,
-    })
-    table.insert(bid_cards[collider], taken_quest1)
+    Wait.time(
+      function()
+        local taken_quest1 = quest_one.takeObject({
+          position = {x_position + quest_mod, pos[2] + quest_mod, pos[3] + z_mod},
+          flip = true,
+          rotation = rot,
+          index = 0,
+          top = true,
+        })
+        table.insert(bid_cards[collider], taken_quest1)
+      end,
+      count * 0.5
+    )
+
   end
 
   if round > 3 then
-    local taken_quest2 = quest_two.takeObject({
-      position = {x_position + quest_mod, pos[2] + quest_mod, pos[3] + z_mod},
-      flip = true,
-      rotation = rot,
-      index = 0,
-      top = true,
-    })
-    table.insert(bid_cards[collider], taken_quest2)
+    Wait.time(
+      function()
+        local taken_quest2 = quest_two.takeObject({
+          position = {x_position + quest_mod, pos[2] + quest_mod, pos[3] + z_mod},
+          flip = true,
+          rotation = rot,
+          index = 0,
+          top = true,
+        })
+        table.insert(bid_cards[collider], taken_quest2)
+      end,
+      count * 0.5
+    )
   end
 
 end
@@ -141,7 +193,7 @@ local z_mod = 2.175
 function deal_out_bids()
   for key, cards in pairs(bid_cards) do
     local player_color = current_bid_color[key]
-    local ejection_pile = getObjectFromGUID("9f4d22")
+    local ejection_pile = Global.getVar("ejection_pile")
     if player_color == "none" then
       --deal cards to ejection pile
       for i = 1, #cards do
@@ -289,8 +341,6 @@ function checkBidComplete()
   local players = getSeatedPlayers()
 
   if #players == countBids() then
-    print("implement bid completion phase")
-
     wait_time = 0
     for collider, player_color in pairs(current_bid_color) do
       Wait.time(function()
@@ -298,8 +348,9 @@ function checkBidComplete()
       end, wait_time)
       wait_time = wait_time + 2.5
     end
+    Global.setVar("neutrinosEndRound", true)
+
     Wait.time(function()
-      Global.setVar("neutrinosEndRound", true)
       Global.call("checkForNeutrinos")
     end, wait_time + 1)
   end
@@ -307,7 +358,7 @@ end
 
 function dealOutColliders(collider, player_color)
   local cards = bid_cards[collider]
-  local ejection_pile = getObjectFromGUID("9f4d22")
+  local ejection_pile = Global.getVar("ejection_pile")
   local eject_pos = ejection_pile.getPosition()
   local eject_rot = ejection_pile.getRotation()
   if #cards == 0 then
@@ -318,7 +369,9 @@ function dealOutColliders(collider, player_color)
     for i = 1, #cards do
       Wait.time(function()
         cards[i].deal(1, player_color)
-        spendCoins(collider, player_color)
+        local cost = current_bid[collider]
+        local one_ev_bag = Global.getVar("one_ev_bag")
+        one_ev_bag.call(spendCoins, {["cost"] = cost, ["player_color"] = player_color})
         kickLowerBid(player_color)
       end, i * 0.5)
     end
@@ -332,41 +385,6 @@ function dealOutColliders(collider, player_color)
   end
 end
 
---{-26.59, 3.09, -6.93} 3Ev Bag
--- 1ev Bag
-function spendCoins(collider, player_color)
-  local cost = current_bid[collider]
-  local coin_zone_guids = Global.getTable("coin_zone_guids")
-  local coins = getObjectFromGUID(coin_zone_guids[player_color]).getObjects()
-
-  local threes = {}
-  local ones = {}
-
-  local three_ev_bag = getObjectFromGUID("66bc96")
-
-  local one_ev_bag = getObjectFromGUID("d98962")
-
-  for i = 1, #coins do
-    if coins[i].memo == "three" then
-      table.insert(threes, coins[i])
-    end
-    if coins[i].memo == "one" then
-      table.insert(ones, coins[i])
-    end
-  end
-
-  while cost > 0 do
-    if cost >= 3 and #threes > 0 then
-      local three_coin = table.remove(threes)
-      three_ev_bag.putObject(three_coin)
-      cost = cost - 3
-    else
-      local one_coin = table.remove(ones)
-      one_ev_bag.putObject(one_coin)
-      cost = cost - 1
-    end
-  end
-end
 
 function countBids()
   local bid_count = 0

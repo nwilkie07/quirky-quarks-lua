@@ -1,15 +1,5 @@
 local placement_pos = { - 14.50, 0.97, - 7.00}
 
-
-function onLoad()
-  self.createButton({
-    click_function = "setupDiscoveryPhase",
-    function_owner = self,
-    width = 400,
-    height = 400
-  })
-end
-
 --none: player has not passed
 --round: player passes on the current bid
 --all: player permenantly passed discovery phase
@@ -20,20 +10,38 @@ local passes = {
   ["Yellow"] = "none"
 }
 
+local hasStartedBid = {
+  ["Red"] = 0,
+  ["Blue"] = 0,
+  ["Yellow"] = 0,
+  ["Green"] = 0
+}
+
+local bid_order = {}
+
+-- the value of the current bid
 local bid = 1
+-- the color of the player with highest bid
 local bidder = nil
+-- the round number which only increases after each player gets to bid once
+-- controls the cost of starting bids
 local bid_round = 1
+-- the card being bid upon
 local bid_object = nil
 local collider_board = nil
 local bid_card_guids = {}
-local score_button = nil
+local three_ev_bag = nil
+
+function onLoad()
+  three_ev_bag = Global.getVar("three_ev_bag")
+end
 
 --checks if player has the money and it is their bid turn, then increases the bid by +1
 function increaseBid(player)
   local current_phase = Global.getVar("current_phase")
   if current_phase == 4 then
     local player_color = player.color
-    local player_coins = score_button.call("calculateCoins", player_color)
+    local player_coins = three_ev_bag.call("calculateCoins", player_color)
 
     if player_color ~= bidder then
       broadcastToAll(player_color.. ". It is not your turn to increase the bid or you haven't placed your physicist on a card yet!")
@@ -55,18 +63,37 @@ end
 -- type: the pass type "round" or "all"
 function playerPass(player, type)
   local collider_board = getObjectFromGUID("1f72b6")
+  local current_order = Turns.order
+  local player_index = Global.getTable("player_index")
 
   --reset everything if bidder is passing
+  -- check if there is someone left to bid?
   if player.color == bidder then
     bid = bid_round
     bidder = nil
     bid_object = nil
     collider_board.call("kickLowerBid", player.color)
+    return
   end
 
   local current_phase = Global.getVar("current_phase")
   if current_phase == 4 then
     passes[player.color] = type
+
+    -- cannot remove the final player from the turn system
+    if #current_order <= 1 then
+      attemptEndBid()
+      return
+    end
+
+    --remove this player from the internal turn control for this bidding phase
+    table.remove(current_order, player_index[player.color])
+    Turns.order = current_order
+    -- if it is the turn of the passing players
+    -- find next viable player/bidder
+    if Turns.turn_color == player.color then
+      Turns.turn_color = Turns.getNextTurnColor()
+    end
     attemptEndBid()
   else
     broadcastToAll("Wrong phase, this button should not be available to you!")
@@ -77,7 +104,7 @@ local bid_setup = false
 --if its a deck take the card
 -- collision {["color"] = , ["object"] =}
 function calculateBid(collision)
-  -- deal with re-trigger from moving card to bid position
+  -- deals with re-trigger from moving card to bid position
   if bid_setup then
     bid_setup = false
     return
@@ -137,9 +164,8 @@ function calculateBid(collision)
 
 
   local current_phase = Global.getVar("current_phase")
-  score_button = getObjectFromGUID("652e27")
-  local player_coins = score_button.call("calculateCoins", player_color)
-  collider_board = getObjectFromGUID("1f72b6")
+  local player_coins = three_ev_bag.call("calculateCoins", player_color)
+  collider_board = Global.getVar("collider_board")
 
   --this error will likely never happen
   -- if round is Discovery Round
@@ -197,31 +223,70 @@ function attemptEndBid()
   end
 
   -- if all but one player has passed complete the bid
-  if passCount == #players - 1 then
+  if passCount == #players - 1 and bidder ~= nil then
     --give card to player and reset bid variables
     bid_card_guids[bid_object.getGUID()] = nil
     bid_object.deal(1, bidder)
+
     collider_board.call("kickLowerBid", bidder)
 
+    local one_ev_bag = Global.getVar("one_ev_bag")
+    one_ev_bag.call("spendCoins", {["cost"] = bid, ["player_color"] = bidder})
 
-    bid_round = bid_round + 1
+    hasStartedBid[bidder] = 1
+    local bid_count = hasStartedBid["Yellow"] + hasStartedBid["Red"] + hasStartedBid["Blue"] + hasStartedBid["Green"]
+
+    -- has everyone had a chance to bid at the current starting bid value?
+    -- if so increment the round which increases the starting bid by 1
+    if bid_count == #players then
+      local player_color = players[i]
+      bid_round = bid_round + 1
+      for i = 1, #players do
+        if passes[player_color] ~= "all" then
+          -- table index is nil?
+          hasStartedBid[player_color] = 0
+        end
+      end
+    end
+
+
+    local temp_order = Global.getVar("player_order")
+    local player_index = Global.getTable("player_index")
+    -- check which players should still be skipped by internal turn controls
+    -- resetting turns
+    for i = 1, #temp_order do
+      local player_color = temp_order[i]
+
+      if passes[player_color] == "all" then
+        table.remove(temp_order, player_index[player_color])
+      end
+    end
+
+    Turns.order = temp_order
+
+    -- reset variables
     bid = bid_round
     bid_object = nil
+    bidder = nil
 
-    log(passes)
+    collider_board.UI.setAttribute("discovery_bid", text, "Bid: 0")
+
     for color, val in pairs(passes) do
       if val == "round" then
         passes[color] = "none"
       end
     end
-
   end
-
   if passCount == #players then
     -- discovery phase is over, perform cleanup
     local discovery_zone = getObjectFromGUID("6c7a71")
     local cards = discovery_zone.getObjects()
+    --all players are turned back on in the turn system
+    local player_order = Global.getVar("player_order")
+    Turns.order = player_order
+
     sendToDiscard(cards)
+    Global.call("endPhase")
   end
 end
 
@@ -230,168 +295,221 @@ end
 -- will ignore cards that are not of type particle or quest
 -- runtime O(n^2)
 function sendToDiscard(cards)
-  local particle_discard = Global.getTable("particle_discard_zone")
-  local quest1_discard = Global.getVar("quest1_discard_zone")
-  local quest2_discard = Global.getVar("quest2_discard_zone")
-
   for i = 1, #cards do
     local card = cards[i]
-    if card.type == "Deck" then
-      sendToDiscard(card.getObjects())
-    elseif card.type == "Card" then
-      if card.memo == "particle" then
-        card.setRotation(particle_discard.getRotation())
-        card.setPositionSmooth(particle_discard.getPosition())
-      elseif card.memo == "quest_one" then
-        card.setRotation(quest1_discard.getRotation())
-        card.setPositionSmooth(quest1_discard.getPosition())
-      elseif card.memo == "quest_two" then
-        card.setRotation(quest2_discard.getRotation())
-        card.setPositionSmooth(quest2_discard.getPosition())
-      end
+    Wait.time(
+      function()
+        if card.type == "Deck" then
+          for key, value in pairs(card.getObjects()) do
+            if #card.getObjects() >= 2 then
+              discardDeckCard(card, value)
+            else
+              local final_card = getObjectFromGUID(value.guid)
+              discardCard(final_card)
+            end
+          end
+        elseif card.type == "Card" then
+          discardCard(card)
+        end
+        end, i
+      )
     end
   end
-end
 
---add behavior to handle if there is only one card
-function setupDiscoveryPhase()
-  --register player physicist figurines for collisions
-  local figurine_guids = Global.getTable("figurine_guids")
 
-  for color, guid in pairs(figurine_guids) do
-    getObjectFromGUID(guid).registerCollisions(false)
+  function discardCard(card)
+    local particle_discard = Global.getVar("particle_discard_zone")
+    local quest1_discard = Global.getVar("quest1_discard_zone")
+    local quest2_discard = Global.getVar("quest2_discard_zone")
+    if card.memo == "particle" then
+      card.setRotation(particle_discard.getRotation())
+      card.setPositionSmooth(particle_discard.getPosition())
+    elseif card.memo == "quest_one" then
+      card.setRotation(quest1_discard.getRotation())
+      card.setPositionSmooth(quest1_discard.getPosition())
+    elseif card.memo == "quest_two" then
+      card.setRotation(quest2_discard.getRotation())
+      card.setPositionSmooth(quest2_discard.getPosition())
+    end
   end
 
-  local eject_zone = getObjectFromGUID("0cb1ea")
-  local eject_deck = createDeck(eject_zone.getObjects())
-  local eject_cards = eject_deck.getObjects()
-  local collider_board = getObjectFromGUID("1f72b6")
-  local rotation = collider_board.getRotation()
-
-  -- quick sort to sort cards by type
-  quicksort(eject_cards, 1, #eject_cards, "name")
-  -- quick sort cards by pile type
-  quicksort(eject_cards, 1, #eject_cards, "memo")
-
-  --set to rotation of collider board
-  local prev_card_data = eject_cards[1]
-  local prev_card = eject_deck.takeObject({
-    position = placement_pos,
-    rotation = {0, 90, 0},
-    smooth = True,
-    guid = prev_card_data.guid,
-  })
-  local x_mod = 3.2
-  local y_mod = 7
-  local z_mod = 2
-
-  bid_card_guids[prev_card_data.guid] = prev_card
-
-  -- layout cards on table and register for collision to control bidding
-  for i = 2, #eject_cards do
-    local current_card_data = eject_cards[i]
-    if current_card_data == nil then
-      return
-    end
-
-    bid_card_guids[current_card_data.guid] = current_card_data
-
-    if prev_card_data.name ~= current_card_data.name then
-      if placement_pos[3] >= 7.00 then
-        placement_pos = {placement_pos[1] + x_mod, placement_pos[2], - y_mod, placement_pos[3]}
-      else
-        placement_pos = {placement_pos[1], placement_pos[2], placement_pos[3] + z_mod}
-      end
-    end
-
-    -- handles case when one card is left and it is no longer a deck
-    if i < #eject_cards then
-      local current_card = eject_deck.takeObject({
-        position = placement_pos,
-        rotation = {0, 90, 0},
-        smooth = True,
-        guid = current_card_data.guid,
+  -- does not work for decks
+  function discardDeckCard(deck, card)
+    local particle_discard = Global.getVar("particle_discard_zone")
+    local quest1_discard = Global.getVar("quest1_discard_zone")
+    local quest2_discard = Global.getVar("quest2_discard_zone")
+    if card.memo == "particle" then
+      deck.takeObject({
+        position = particle_discard.getPosition(),
+        rotation = particle_discard.getRotation(),
+        smooth = true,
+        flip = false,
+        guid = card.guid,
       })
-      prev_card_data = current_card_data
-    else
-      local last_card = getObjectFromGUID(current_card_data.guid)
-      bid_card_guids[last_card.getGUID()] = last_card
-      last_card.setPositionSmooth(placement_pos)
-      last_card.setRotationSmooth({0, 90, 0})
-    end
-
-  end
-
-
-
-end
-
---assumes there will be at least one deck
--- places any other cards into one main deck
--- returns the reference to the deck
-function createDeck(objects)
-  local master_deck = nil
-
-  for key, value in pairs(objects) do
-    if value ~= nil and value.type == "Deck" and value.name ~= "Ejection Pile" then
-      master_deck = value
-      break
+    elseif card.memo == "quest_one" then
+      deck.takeObject({
+        position = quest1_discard.getPosition(),
+        rotation = quest1_discard.getRotation(),
+        smooth = true,
+        flip = false,
+        guid = card.guid,
+      })
+    elseif card.memo == "quest_two" then
+      deck.takeObject({
+        position = quest2_discard.getPosition(),
+        rotation = quest2_discard.getRotation(),
+        smooth = true,
+        flip = false,
+        guid = card.guid,
+      })
     end
   end
 
-  for key, value in pairs(objects) do
-    if value.name ~= "Ejection Pile" and value.guid ~= master_deck.guid then
-      if value.type == "Deck" or value.type == "Card" then
-        master_deck.putObject(value)
+  --add behavior to handle if there is only one card
+  function setupDiscoveryPhase()
+    --register player physicist figurines for collisions
+    local figurine_guids = Global.getTable("figurine_guids")
+
+    -- register the figurines for collisions to detect bids
+    for color, guid in pairs(figurine_guids) do
+      getObjectFromGUID(guid).registerCollisions(false)
+    end
+
+    local eject_zone = getObjectFromGUID("0cb1ea")
+    local eject_deck = createDeck(eject_zone.getObjects())
+    local eject_cards = eject_deck.getObjects()
+    local collider_board = getObjectFromGUID("1f72b6")
+    local rotation = collider_board.getRotation()
+
+    -- quick sort to sort cards by type
+    quicksort(eject_cards, 1, #eject_cards, "name")
+    -- quick sort cards by pile type (quest1, quest2, particles)
+    quicksort(eject_cards, 1, #eject_cards, "memo")
+
+    --set to rotation of collider board
+    local prev_card_data = eject_cards[1]
+    local prev_card = eject_deck.takeObject({
+      position = placement_pos,
+      rotation = {0, 90, 0},
+      smooth = True,
+      guid = prev_card_data.guid,
+    })
+    local x_mod = 3.2
+    local y_mod = 7
+    local z_mod = 2
+
+    bid_card_guids[prev_card_data.guid] = prev_card
+
+    -- layout cards on table
+    for i = 2, #eject_cards do
+      Wait.time(
+        function()
+          local current_card_data = eject_cards[i]
+          if current_card_data == nil then
+            return
+          end
+
+          bid_card_guids[current_card_data.guid] = current_card_data
+
+          if prev_card_data.name ~= current_card_data.name then
+            if placement_pos[3] >= 7.00 then
+              placement_pos = {placement_pos[1] + x_mod, placement_pos[2], - y_mod, placement_pos[3]}
+            else
+              placement_pos = {placement_pos[1], placement_pos[2], placement_pos[3] + z_mod}
+            end
+          end
+
+          -- deal cards and also accounts for the case when one card is left
+          -- and there is no longer a deck to take from
+
+          if i < #eject_cards then
+            local current_card = eject_deck.takeObject({
+              position = placement_pos,
+              rotation = {0, 90, 0},
+              smooth = True,
+              guid = current_card_data.guid,
+            })
+            prev_card_data = current_card_data
+          else
+            local last_card = getObjectFromGUID(current_card_data.guid)
+            bid_card_guids[last_card.getGUID()] = last_card
+            last_card.setPositionSmooth(placement_pos)
+            last_card.setRotationSmooth({0, 90, 0})
+          end
+        end,
+        i * 0.25
+      )
+    end
+    log(#bid_card_guids)
+    log(bid_card_guids)
+  end
+
+  --assumes there will be at least one deck
+  -- places any other cards into one main deck
+  -- returns the reference to the deck
+  function createDeck(objects)
+    local master_deck = nil
+
+    for key, value in pairs(objects) do
+      if value ~= nil and value.type == "Deck" and value.name ~= "Ejection Pile" then
+        master_deck = value
+        break
       end
     end
-  end
-  return master_deck
-end
 
-
-function nameCompare(a, b)
-  if a.name == b.name or a.name < b.name then
-    return True
-  else
-    return false
-  end
-end
-
-function partition(arr, low, high, type)
-  -- sort by name or by type stored in memo
-  local pivot = nil
-
-  if type == "name" then
-    pivot = arr[high].name
-  else
-    pivot = arr[high].memo
+    for key, value in pairs(objects) do
+      if value.name ~= "Ejection Pile" and value.guid ~= master_deck.guid then
+        if value.type == "Deck" or value.type == "Card" then
+          master_deck.putObject(value)
+        end
+      end
+    end
+    return master_deck
   end
 
-  local i = (low - 1)
 
-  for j = low, high - 1 do
-    local compareVal = nil
-    if type == "name" then
-      compareVal = arr[j].name
+  function nameCompare(a, b)
+    if a.name == b.name or a.name < b.name then
+      return True
     else
-      compareVal = arr[j].memo
-    end
-    if compareVal <= pivot then
-      i = i + 1
-      arr[i], arr[j] = arr[j], arr[i]
+      return false
     end
   end
-  arr[i + 1], arr[high] = arr[high], arr[i + 1]
-  return (i + 1)
-end
 
-function quicksort(arr, low, high, type)
-  if low < high then
-    local pi = partition(arr, low, high, type)
+  function partition(arr, low, high, type)
+    -- sort by name or by type stored in memo
+    local pivot = nil
 
-    quicksort(arr, low, pi - 1, type)
-    quicksort(arr, pi + 1, high, type)
+    if type == "name" then
+      pivot = arr[high].name
+    else
+      pivot = arr[high].memo
+    end
+
+    local i = (low - 1)
+
+    for j = low, high - 1 do
+      local compareVal = nil
+      if type == "name" then
+        compareVal = arr[j].name
+      else
+        compareVal = arr[j].memo
+      end
+      if compareVal <= pivot then
+        i = i + 1
+        arr[i], arr[j] = arr[j], arr[i]
+      end
+    end
+    arr[i + 1], arr[high] = arr[high], arr[i + 1]
+    return (i + 1)
   end
-  return arr
-end
+
+  function quicksort(arr, low, high, type)
+    if low < high then
+      local pi = partition(arr, low, high, type)
+
+      quicksort(arr, low, pi - 1, type)
+      quicksort(arr, pi + 1, high, type)
+    end
+    return arr
+  end

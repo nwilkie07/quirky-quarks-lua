@@ -88,7 +88,7 @@ local ejection_allowances = {
   ["Blue"] = 0
 }
 
--- something wrong in this function
+-- something wrong in this function, triggering twice for first player
 function onEjectionPhaseStart()
   local players = getSeatedPlayers()
 
@@ -106,7 +106,7 @@ function onEjectionPhaseStart()
     ejection_allowances[player_color] = math.floor(card_count / 5)
 
     card_count = 0
-    print("Implement check for special cards")
+
     local min_ejection = ejection_allowances[player_color] - positronium
     if min_ejection == 0 then
       broadcastToColor("You may eject between 0 and " ..ejection_allowances[player_color].. " card(s).", player_color)
@@ -143,7 +143,8 @@ function ejectCard(player_color, position, object)
   local single_card_powers = Global.getTable("singleCardPowers")
   local down_annihilation_color = single_card_powers["Down Annihilation"]
   local pion_after_eject = single_card_powers["Pion After Eject"]
-  local eject_deck_location = getObjectFromGUID("9f4d22").getPosition()
+  local eject_deck = Global.getVar("eject_deck")
+  local eject_deck_location = eject_deck.getPosition()
 
   local zones = object.getZones()
   local phase = Global.getVar("current_phase")
@@ -159,7 +160,7 @@ function ejectCard(player_color, position, object)
   end
 
   if inHandZone(object, player_color) then
-    local one_ev_bag = getObjectFromGUID("d98962")
+    local one_ev_bag = Global.getVar("one_ev_bag")
     local coin_boards = Global.getTable("coin_board_guids")
     ejection_allowances[player_color] = ejection_allowances[player_color] - 1
 
@@ -168,21 +169,15 @@ function ejectCard(player_color, position, object)
     object.setPosition(eject_locations[player_color])
     --set location again for smooth animation
     object.setPositionSmooth({eject_deck_location[1], 2, eject_deck_location[3]})
-    -- make sure no other objects registered
-    object.registerCollisions()
 
     --one coin per card ejected
     --only pay out coins when ejections are complete??
     --Make use of deal card generic function
-    one_ev_bag.takeObject({
-      position = getObjectFromGUID(coin_boards[player_color]).getPosition(),
-      smooth = true,
-    })
+    local one_ev_bag = Global.getVar("one_ev_bag")
     if down_annihilation_color == player_color then
-      one_ev_bag.takeObject({
-        position = getObjectFromGUID(coin_boards[player_color]).getPosition(),
-        smooth = true,
-      })
+      one_ev_bag.call("dealCoins", {["value"] = 2, ["player_color"] = player_color})
+    else
+      one_ev_bag.call("dealCoins", {["value"] = 1, ["player_color"] = player_color})
     end
 
     local ejections_remaining = ejection_allowances["Yellow"] + ejection_allowances["Blue"] + ejection_allowances["Green"] + ejection_allowances["Red"]
@@ -213,20 +208,20 @@ function ejectionEndSteps()
   --if we are not waiting for the player with pion_after_eject card
   -- to draw extra cards then we end the round
   Wait.time(
-  function()
-    Global.setVar("neutrinosEndRound", true)
-    Global.call("checkForNeutrinos")
-  end, 2)
-end
-
---checks if the ejection card is in the hand zone of the correct person
-function inHandZone(object, ejectColor)
-  local zones = object.getZones()
-  for i = 1, #zones do
-    local zone = zones[i]
-    if zone.type == "Hand" and ejectColor == zone.getData()["FogColor"] then
-      return true
-    end
+    function()
+      Global.setVar("neutrinosEndRound", true)
+      Global.call("checkForNeutrinos")
+    end, 2)
   end
-  return false
-end
+
+  --checks if the ejection card is in the hand zone of the correct person
+  function inHandZone(object, ejectColor)
+    local zones = object.getZones()
+    for i = 1, #zones do
+      local zone = zones[i]
+      if zone.type == "Hand" and ejectColor == zone.getData()["FogColor"] then
+        return true
+      end
+    end
+    return false
+  end

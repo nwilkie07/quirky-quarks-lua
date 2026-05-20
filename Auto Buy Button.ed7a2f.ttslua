@@ -1,5 +1,5 @@
 function onLoad()
-  local buy_card = getObjectFromGUID("6425d0")
+  local buy_card = Global.getVar("buy_card")
   params = {
     click_function = "purchaseCard",
     function_owner = buy_card,

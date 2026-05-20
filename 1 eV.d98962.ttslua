@@ -1,3 +1,85 @@
 function onLoad()
   self.memo = "1 eV"
 end
+
+--generic dealMoney function that places the money in front of the players boards
+function dealCoins(data)
+  local coin_zone_guids = Global.getTable("coin_zone_guids")
+  local value = data["value"]
+  local player_color = data["player_color"]
+  local three_bag = Global.getVar("three_ev_bag")
+  local one_bag = Global.getVar("one_ev_bag")
+  local coin_zone = getObjectFromGUID(coin_zone_guids[player_color])
+  local rot = coin_zone.getRotation()
+  local pos = coin_zone.getPosition()
+  local y_mod = 5
+  local x_start = -2.26
+  local x_mod = 1.5
+  -- depends on board side
+  if rot["y"] == 180 then
+    y_mod = -5
+    x_start = 2.26
+    x_mod = -1.5
+  end
+
+  local money = value
+  local count = 1
+
+  while money > 0 do
+    if money >= 3 then
+      three_bag.takeObject({
+        position = {pos[1] + x_start, 2, pos[3] + y_mod},
+        rotation = rot,
+        smooth = true,
+      })
+      money = money - 3
+      x_start = x_start + x_mod
+    else
+      one_bag.takeObject({
+        position = {pos[1] + x_start, 2, pos[3] + y_mod},
+        rotation = rot,
+        smooth = true,
+      })
+      money = money - 1
+      x_start = x_start + x_mod
+    end
+  end
+end
+
+-- generic function to take coins from player when a spend action is performed
+function spendCoins(data)
+  local cost = data["cost"]
+  local player_color = data["player_color"]
+  local coin_zone_guids = Global.getTable("coin_zone_guids")
+  local coins = getObjectFromGUID(coin_zone_guids[player_color]).getObjects()
+
+  local threes = {}
+  local ones = {}
+
+  for i = 1, #coins do
+    if coins[i].memo == "three" then
+      table.insert(threes, coins[i])
+    end
+    if coins[i].memo == "one" then
+      table.insert(ones, coins[i])
+    end
+  end
+
+  while cost > 0 do
+    if cost >= 3 and #threes > 0 then
+      local three_coin = table.remove(threes)
+      three_coin.destruct()
+      cost = cost - 3
+    elseif cost < 3 and #ones <= 0 then
+      local three_coin = table.remove(threes)
+      local remainder = 3 - cost
+      dealCoins({["value"] = remainder, ["player_color"] = player_color})
+      three_coin.destruct()
+      cost = 0
+    else
+      local one_coin = table.remove(ones)
+      one_coin.destruct()
+      cost = cost - 1
+    end
+  end
+end

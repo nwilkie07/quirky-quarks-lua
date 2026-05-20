@@ -1,3 +1,139 @@
+--add functionality at game end to calculate all score and announce winner
+local coin_zone = nil
+local card_zone = nil
+local cards = {}
+local card_costs = {}
+
 function onLoad()
   self.memo = "3 eV"
+end
+
+-- gets objects from coin zones and coins and counts them based on internal memo name
+function calculateCoins(player_color)
+  local coin_zone_guid = Global.getTable("coin_zone_guids")[player_color]
+  coin_zone = getObjectFromGUID(coin_zone_guid)
+
+  local coins = coin_zone.getObjects()
+  local money = 0
+  for i = 1, #coins do
+    local obj = coins[i]
+    if obj.memo == "three" then
+      money = money + 3
+    end
+    if obj.memo == "one" then
+      money = money + 1
+    end
+  end
+  return money
+end
+
+-- calculates the players total score of money (money/3 = VP) and built quests
+function calculateScore(player_color)
+  local card_zone_guid = Global.getTable("build_zone_guids")[player_color]
+  card_zone = getObjectFromGUID(card_zone_guid)
+
+  local coin_zone_guid = Global.getTable("coin_zone_guids")[player_color]
+  coin_zone = getObjectFromGUID(coin_zone_guid)
+  local coins = coin_zone.getObjects()
+
+  local money_vp = 0
+
+  if #coins > 0 then
+    local money = calculateCoins(player_color)
+    money_vp = math.floor(money / 3)
+  end
+
+  local card_vp = 0
+
+  card_costs = Global.getTable("card_costs")
+  local card_values = Global.getTable("card_values")
+
+  local cards = card_zone.getObjects()
+
+  if #cards > 0 then
+    table.remove(cards, 1)
+
+    for i = 1, #cards do
+      card = cards[i]
+      card_name = card.getName()
+      if card.memo == "quest_one" then
+        card_vp = card_vp + card_values[card_name]
+      end
+      if card.memo == "quest_two" then
+        if card_name == "Neutronium" then
+          card_vp = card_vp + calculateNeutronium()
+        elseif card_name == "Antihydrogen" then
+          card_vp = card_vp + calculateAntiHydrogen()
+        elseif card_name == "Super Gluonium" then
+          card_vp = card_vp + calculateSuperGluonium()
+        end
+        card_vp = card_vp + card_values[card_name]
+      end
+    end
+  end
+
+  total_vp = card_vp + money_vp
+  return total_vp
+end
+
+function calculateNeutronium()
+  --Don't include Neutronium quest
+  vp = (#cards * 2) - 2
+  return vp
+end
+
+-- a table to check if cards are counted for antiHydrogen
+antiHydrogenTable = {
+  ["E Annihilation"] = 1,
+  ["Antihydrogen"] = 1,
+  ["Up Annihilation"] = 1,
+  ["Down Annihilation"] = 1,
+  ["Positronium"] = 1,
+  ["Pion After Eject"] = 1,
+  ["Pion Before Eject"] = 1,
+  ["Green Pion Start"] = 1,
+  ["Blue Pion Start"] = 1
+}
+
+function calculateAntiHydrogen()
+  vp = 0
+  for i = 1, #cards do
+    card_name = cards[i].getName()
+    if antiHydrogenTable[card_name] == 1 then
+      vp = vp + 4
+    end
+  end
+  --remove 4 as we don't include the card itself
+  return vp - 4
+end
+
+-- a table to check if the card counts for the super gluonium card
+superGluoniumTable = {
+  ["Antihydrogen"] = 1,
+  ["Blue Pion Start"] = 1,
+  ["Deuterium"] = 1,
+  ["Green Pion Start"] = 1,
+  ["Gluonium"] = 1,
+  ["Helium-3"] = 1,
+  ["Helium-4"] = 1,
+  ["Hydrogen Base"] = 1,
+  ["Neutronium"] = 1,
+  ["Neutron"] = 1,
+  ["Pion After Eject"] = 1,
+  ["Pion Before Eject"] = 1,
+  ["Proton"] = 1,
+  ["Super Gluonium"] = 1,
+  ["Tritium"] = 1,
+}
+
+function calculateSuperGluonium()
+  vp = 0
+  for i = 1, #cards do
+    card_name = cards[i].getName()
+    if superGluoniumTable[card_name] == 1 then
+      vp = vp + 2
+    end
+  end
+  -- remove 2 to not includ Super Gluonium quest giving the ability
+  return vp - 2
 end

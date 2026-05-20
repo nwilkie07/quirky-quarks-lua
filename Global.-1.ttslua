@@ -263,6 +263,12 @@ multiCardPowers = {
   }
 }
 
+turn_orders = {
+  ["Yellow"] = {"Yellow", "Red", "Green", "Blue"},
+  ["Green"] = {"Green", "Blue", "Yellow", "Red"},
+  ["Blue"] = {"Blue", "Yellow", "Red", "Green"},
+  ["Red"] = {"Red", "Green", "Blue", "Yellow"}
+}
 
 current_round = 1
 current_phase = 1
@@ -283,6 +289,26 @@ particle_discard_zone = nil
 quest1_discard_zone = nil
 quest2_discard_zone = nil
 
+collider_board = nil
+ejection_pile = nil
+buy_card = nil
+
+one_ev_bag = nil
+three_ev_bag = nil
+
+--Turn controller orderings
+player_index = {}
+index_player = {}
+player_order = {}
+player_turn = "none"
+
+color_table = {
+  ["Red"] = "#FF0000",
+  ["Green"] = "#00FF11",
+  ["Blue"] = "#0B00FF",
+  ["Yellow"] = "#FFEC00"
+}
+
 --[[ The onLoad event is called after the game save finishes loading. --]]
 -- setup variables used by many functions, call and change them here so we can change them only once
 function onLoad()
@@ -297,20 +323,24 @@ function onLoad()
   particle_discard_zone = getObjectFromGUID("345485")
   quest1_discard_zone = getObjectFromGUID("a0c4a3")
   quest2_discard_zone = getObjectFromGUID("4af37c")
-end
 
---[[ The onUpdate event is called once per frame. --]]
-function onUpdate()
-  --[[ print('onUpdate loop!') --]]
+  collider_board = getObjectFromGUID("1f72b6")
+  ejection_pile = getObjectFromGUID("9f4d22")
+
+  one_ev_bag = getObjectFromGUID("d98962")
+  three_ev_bag = getObjectFromGUID("66bc96")
+
+  round_die = getObjectFromGUID("e19c46")
+  phase_die = getObjectFromGUID("1050fc")
+
+  buy_card = getObjectFromGUID("6425d0")
 end
 
 --called when people bid on an object in the discovery phase
 function onObjectCollisionEnter(object, collision_info)
-  log(collision_info)
   local collision_object = collision_info.collision_object
 
   if (collision_object.type == "Card" or collision_object.type == "Deck") and object.memo == "physicist" then
-    local ejection_pile = getObjectFromGUID("9f4d22")
     ejection_pile.call("calculateBid", {["player_color"] = object.getName(), ["object"] = collision_object})
   end
 end
@@ -336,12 +366,6 @@ before_ejection_draws = {}
 --so we can track the player with the pion_after_eject cards drawn
 after_ejection_draws = {}
 
---return object reference to a players hand based on color
-function getPlayerHand(color)
-  local hand_guid = color_hand_guid[color]
-  return getObjectFromGUID(hand_guid)
-end
-
 options = {}
 function setOptions(cardType)
   table.insert(options, cardType)
@@ -353,17 +377,12 @@ function toggleOption(player, value, id)
 end
 
 function complexPurchase(player, value, id)
-  getObjectFromGUID("6425d0").call("complexPurchase", {player, value, id})
+  buy_card.call("complexPurchase", {player, value, id})
 end
 
 
 --variable to control if the phase/round should change after checking neutrinos
 neutrinosEndRound = false
-
-function setNeutrinosEndRound(value)
-  neutrinosEndRound = value
-  return neutrinosEndRound
-end
 
 --tracks cards quantity to prevent unnecessary calls in neutrino functions
 cards_in_hand = {
@@ -423,15 +442,13 @@ function updateGluoniumTracker()
       ["Yellow"] = 0
     }
 
-    local buy_card_board = getObjectFromGUID("6425d0")
-
     -- looks through player cards to see if anyone
     for i = 1, #quest_cards do
       if quest_cards[i].getName() == "Gluonium" then
         gluonium_tracker[player_color] = gluonium_tracker[player_color] + 1
       end
     end
-    buy_card_board.call("setGluoniumTracker", gluonium_tracker)
+    buy_card.call("setGluoniumTracker", gluonium_tracker)
   end
 end
 
@@ -472,10 +489,9 @@ draw_card_tracker = {
   ["Green"] = {}
 }
 
+--being called twice?
 function onPhaseChange()
   players = getSeatedPlayers()
-  board = getObjectFromGUID("1f72b6")
-  phase_die = getObjectFromGUID("1050fc")
 
   phase_die.setRotationSmooth(dice_rot[current_phase])
   phase_die.setPositionSmooth(phase_dice_pos[current_phase])
@@ -483,28 +499,27 @@ function onPhaseChange()
   --Phase one is handled by onRoundChange
   if current_phase == 2 then
     --Research Phase, show bid buttons
-    board.UI.setAttribute("slac_panel", "visibility", "")
-    board.UI.setAttribute("tevatron_panel", "visibility", "")
-    board.UI.setAttribute("esrf_panel", "visibility", "")
-    board.UI.setAttribute("lhc_panel", "visibility", "")
+    collider_board.UI.setAttribute("slac_panel", "visibility", "")
+    collider_board.UI.setAttribute("tevatron_panel", "visibility", "")
+    collider_board.UI.setAttribute("esrf_panel", "visibility", "")
+    collider_board.UI.setAttribute("lhc_panel", "visibility", "")
 
     if #players ~= 2 then
-      board.UI.setAttribute("kekb_panel", "visibility", "")
+      collider_board.UI.setAttribute("kekb_panel", "visibility", "")
     end
 
     broadcastToAll("Research phase starts. " ..starting_physicist.. " bids first.")
   elseif current_phase == 3 then
     --Ejection Phase send message to each player on discard amount
-    board.UI.setAttribute("slac_panel", "visibility", "hidden")
-    board.UI.setAttribute("tevatron_panel", "visibility", "hidden")
-    board.UI.setAttribute("esrf_panel", "visibility", "hidden")
-    board.UI.setAttribute("lhc_panel", "visibility", "hidden")
-    board.UI.setAttribute("kekb_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("slac_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("tevatron_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("esrf_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("lhc_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("kekb_panel", "visibility", "hidden")
 
     particles_deck.call("onEjectionPhaseStart")
   elseif current_phase == 4 then
-    board.UI.setAttribute("discovery_panel", "visibility", "")
-    local ejection_pile = getObjectFromGUID("9f4d22")
+    collider_board.UI.setAttribute("discovery_panel", "visibility", "")
     ejection_pile.call("setupDiscoveryPhase")
     --Discovery Phase
   elseif current_phase == 5 then
@@ -549,179 +564,142 @@ function onRoundChange()
     }
 
     -- check for and update player draw_counts if they have these special cards
-    if singleCardPowers["Green Pion Start"] == "none" then
+    if singleCardPowers["Green Pion Start"] ~= "none" then
       local color = singleCardPowers["Green Pion Start"]
       player_draws[color] = player_draws[color] + math.floor(current_round / 2)
     end
     -- two if statements in case the player has both cards
-    if singleCardPowers["Blue Pion Start"] == "none" then
+    if singleCardPowers["Blue Pion Start"] ~= "none" then
       local color = singleCardPowers["Blue Pion Start"]
-      player_draws[color] = player_draws[color] + math.floor(current_round / 2) end
-
-      --loop to deal money to each player and tell them how many cards to draw
-      for i = 1, #players do
-        local player_color = players[i]
-
-        --players get 3 eV each round or more if they have Up Annhilation
-        if singleCardPowers["Up Annihilation"] == player_color then
-          dealMoney(3 + current_round)
-        else
-          dealMoney(3)
-        end
-
-        broadcastToColor("Draw " ..draw_count.. " card(s).", player_color)
-      end
-
-    end
-  end
-
-  --generic dealMoney function that places the money in front of the players boards
-  function dealMoney(value, player_color)
-    local three_bag = getObjectFromGUID("66bc96")
-    local one_bag = getObjectFromGUID("d98962")
-    local coin_zone = getObjectFromGUID(coin_zone_guids[player_color])
-    local rot = coin_zone.getRotation()
-    local pos = coin_zone.getPosition()
-    local y_mod = 5
-    local x_start = -2.26
-    local x_mod = 1.5
-    -- depends on board side
-    if rot["y"] == 180 then
-      y_mod = -5
-      x_start = 2.26
-      x_mod = -1.5
+      player_draws[color] = player_draws[color] + math.floor(current_round / 2)
     end
 
-    local money = value
-    local count = 1
-
-    while money > 0 do
-      if money >= 3 then
-        three_bag.takeObject({
-          position = {pos[1] + x_start, 2, pos[3] + y_mod},
-          rotation = rot,
-          smooth = true,
-        })
-        money = money - 3
-        x_start = x_start + x_mod
-      else
-        one_bag.takeObject({
-          position = {pos[1] + x_start, 2, pos[3] + y_mod},
-          rotation = rot,
-          smooth = true,
-        })
-        money = money - 1
-        x_start = x_start + x_mod
-      end
-    end
-  end
-
-  --sets a table of objects to hidden from all but the provided player
-  function hideFromPlayers(objects, player_color)
-    local players = getSeatedPlayers()
+    --loop to deal money to each player and tell them how many cards to draw
     for i = 1, #players do
-      if players[i] == player_color then
-        table.remove(players, i)
-        break
-      end
-    end
-    for j = 1, #objects do
-      objects[j].setHiddenFrom(players)
-    end
-  end
+      local player_color = players[i]
 
-  -- places the neutrino in front of the player to make a choice (buttons on cards)
-  -- attaches button to cards to resolve (move cards around) after a player selects a card
-  function handleNeutrino(player_color)
-    local neutrino_card = table.remove(neutrinos_in_hand[player_color])
-
-    local board = getObjectFromGUID(build_board_guids[player_color])
-    local pos = board.getPosition()
-    local rot = board.getRotation()
-
-    local x_mod = -2
-    local y_height = pos["y"] + 1
-    local z_mod = -6
-
-    if rot["y"] == 180 then
-      z_mod = 6
-      x_mod = 2
-    end
-
-    neutrino_card.setPosition({pos["x"] - x_mod, y_height, pos["z"] + z_mod})
-    neutrino_card.setRotation({rot["x"], rot["y"], 0})
-
-    local particle1 = particles_deck.takeObject({
-      position = {pos["x"], y_height, pos["z"] + z_mod},
-      rotation = {rot["x"], rot["y"], 0},
-      smooth = true,
-      top = true,
-    })
-    particle1.createButton({
-      click_function = "resolveNeutrino",
-      label = "Choose this particle.",
-      width = 400,
-      height = 800,
-      color = {0.5, 0.5, 0.5},
-      tooltip = "Select this card"
-    })
-
-    local particle2 = particles_deck.takeObject({
-      position = {pos["x"] + x_mod, y_height, pos["z"] + z_mod},
-      rotation = {rot["x"], rot["y"], 0},
-      smooth = true,
-      top = true,
-    })
-    particle2.createButton({
-      click_function = "resolveNeutrino",
-      label = "Choose this particle.",
-      width = 400,
-      height = 800,
-      color = {0.5, 0.5, 0.5},
-      tooltip = "Select this card"
-    })
-
-    hideFromPlayers({particle1, particle2}, player_color)
-
-    table.insert(selection_cards[player_color], particle1)
-    table.insert(selection_cards[player_color], particle2)
-    table.insert(selection_cards[player_color], neutrino_card)
-  end
-
-  --called on card selection to move selected card into the players hand
-  -- and the 2 other cards into the discard pile
-  function resolveNeutrino(click_obj, player_color)
-    local cards = selection_cards[player_color]
-    local particle_discard_pos = particle_discard_zone.getPosition()
-
-    --if a player selects a neutrino add it to the array to work through
-    if click_obj.getName() == "Neutrino" then
-      table.insert(neutrinos_in_hand[player_color], click_obj)
-      neutrino_count = neutrino_count + 1
-    end
-
-    for i = 1, #cards do
-      if cards[i].getButtons() then
-        cards[i].removeButton(0)
-      end
-      if cards[i].getGUID() ~= click_obj.getGUID() then
-        Wait.time(
-          function()
-            cards[i].setPositionSmooth(particle_discard_pos)
-          end,
-          i
-        )
+      --players get 3 eV each round or more if they have Up Annhilation
+      if singleCardPowers["Up Annihilation"] == player_color then
+        one_ev_bag.call("dealCoins", {["value"] = 3 + current_round, ["player_color"] = player_color})
       else
-        cards[i].deal(1, player_color)
+        one_ev_bag.call("dealCoins", {["value"] = 3, ["player_color"] = player_color})
       end
+
+      broadcastToColor("Draw " ..player_draws[player_color].. " card(s).", player_color)
     end
 
-    neutrino_count = neutrino_count - 1
+  end
+end
 
-    -- recursively works through other neutrinos a player hand
-    selection_cards[player_color] = {}
-    if #neutrinos_in_hand[player_color] > 0 then
-      handleNeutrino(player_color)
+--sets a table of objects to hidden from all but the provided player
+function hideFromPlayers(objects, player_color)
+  local players = getSeatedPlayers()
+  for i = 1, #players do
+    if players[i] == player_color then
+      table.remove(players, i)
+      break
+    end
+  end
+  for j = 1, #objects do
+    objects[j].setHiddenFrom(players)
+  end
+end
+
+-- places the neutrino in front of the player to make a choice (buttons on cards)
+-- attaches button to cards to resolve (move cards around) after a player selects a card
+function handleNeutrino(player_color)
+  local neutrino_card = table.remove(neutrinos_in_hand[player_color])
+
+  local build_board = getObjectFromGUID(build_board_guids[player_color])
+  local pos = build_board.getPosition()
+  local rot = build_board.getRotation()
+
+  local x_mod = -2
+  local y_height = pos["y"] + 1
+  local z_mod = -6
+
+  if rot["y"] == 180 then
+    z_mod = 6
+    x_mod = 2
+  end
+
+  neutrino_card.setPosition({pos["x"] - x_mod, y_height, pos["z"] + z_mod})
+  neutrino_card.setRotation({rot["x"], rot["y"], 0})
+
+  local particle1 = particles_deck.takeObject({
+    position = {pos["x"], y_height, pos["z"] + z_mod},
+    rotation = {rot["x"], rot["y"], 0},
+    smooth = true,
+    top = true,
+  })
+  particle1.createButton({
+    click_function = "resolveNeutrino",
+    label = "Choose this particle.",
+    width = 400,
+    height = 800,
+    color = {0.5, 0.5, 0.5},
+    tooltip = "Select this card"
+  })
+
+  local particle2 = particles_deck.takeObject({
+    position = {pos["x"] + x_mod, y_height, pos["z"] + z_mod},
+    rotation = {rot["x"], rot["y"], 0},
+    smooth = true,
+    top = true,
+  })
+  particle2.createButton({
+    click_function = "resolveNeutrino",
+    label = "Choose this particle.",
+    width = 400,
+    height = 800,
+    color = {0.5, 0.5, 0.5},
+    tooltip = "Select this card"
+  })
+
+  hideFromPlayers({particle1, particle2}, player_color)
+
+  table.insert(selection_cards[player_color], particle1)
+  table.insert(selection_cards[player_color], particle2)
+  table.insert(selection_cards[player_color], neutrino_card)
+end
+
+--called on card selection to move selected card into the players hand
+-- and the 2 other cards into the discard pile
+function resolveNeutrino(click_obj, player_color)
+  local cards = selection_cards[player_color]
+
+  --if a player selects a neutrino add it to the array to work through
+  if click_obj.getName() == "Neutrino" then
+    table.insert(neutrinos_in_hand[player_color], click_obj)
+    neutrino_count = neutrino_count + 1
+  end
+
+  for i = 1, #cards do
+    if cards[i].getButtons() then
+      cards[i].removeButton(0)
+    end
+    if cards[i].getGUID() ~= click_obj.getGUID() then
+      Wait.time(
+        function()
+          cards[i].setRotation(particle_discard_zone.getRotation())
+          cards[i].setPositionSmooth(particle_discard_zone.getPosition())
+        end,
+        i * 0.25
+      )
+    else
+      cards[i].deal(1, player_color)
+    end
+  end
+
+  neutrino_count = neutrino_count - 1
+
+  -- recursively works through other neutrinos a player hand
+  selection_cards[player_color] = {}
+  if #neutrinos_in_hand[player_color] > 0 then
+    Wait.time(
+      function()
+        handleNeutrino(player_color)
+      end, 1)
     end
 
     cards_in_hand[player_color] = #Player[player_color].getHandObjects()
@@ -757,7 +735,9 @@ function onRoundChange()
     return {hand_items, guid_items}
   end
 
-  function handleSpecialCard(player_color, object)
+  -- this functions records special cards that are placed in the build area for quests
+  -- so we can track and enact the abilities for the player
+  function addSpecialCard(player_color, object)
     if object == nil then
       return
     end
@@ -770,9 +750,7 @@ function onRoundChange()
     if singleCardPowers[card_name] ~= nil then
       -- gain 9 eV immediately
       if card_name == "E Annihilation" then
-        log("made it in to deal money")
-        log(card_name)
-        dealMoney(9, player_color)
+        one_ev_bag.call("dealCoins", {["value"] = 9, ["player_color"] = player_color})
         return
       end
     end
@@ -789,6 +767,39 @@ function onRoundChange()
     end
   end
 
+  --function to remove special card if player accidentally placed a card
+  --in their build area, then remove it
+  function removeSpecialCard(player_color, object)
+    if object == nil then
+      return
+    end
+
+    local card_name = object.getName()
+    if card_name == nil then
+      return
+    end
+
+    if singleCardPowers[card_name] ~= nil then
+      -- gain 9 eV immediately
+      if card_name == "E Annihilation" then
+        --could call spendMoney function here to retract the mistaken income
+        broadcastToColor("Please remove 9 eV from your coins since you have removed E Annihilaiton from your build area!", player_color)
+        return
+      end
+    end
+
+    for key, value in pairs(singleCardPowers) do
+      if card_name == key and singleCardPowers[card_name] ~= nil then
+        singleCardPowers[card_name] = "none"
+        return
+      end
+    end
+
+    if multiCardPowers[player_color][card_name] ~= nil then
+      multiCardPowers[player_color][card_name] = multiCardPowers[player_color][card_name] - 1
+    end
+  end
+
   --loops through and checks if draws are compelete in Phase 1
   function drawsComplete()
     count = player_draws["Yellow"] + player_draws["Green"] + player_draws["Red"] + player_draws["Blue"]
@@ -797,9 +808,27 @@ function onRoundChange()
     end
   end
 
+  local turn_count = 0
+  -- tracks the turns during the quest phase to know when to end the phase
+  function onPlayerTurn(player, previous_player)
+    local players = getSeatedPlayers()
+    if current_phase == 5 then
+      turn_count = turn_count + 1
+      if turn_count == #players then
+        broadcastToColor("You must end your turn to end the game phase!", player.color)
+      end
+      if turn_count > #players then
+        turn_count = 0
+        endPhase()
+      end
+    end
+  end
+
+  -- this function is a mess
   function onObjectEnterZone(zone, enter_object)
     if enter_object ~= nil and zone ~= nil then
       if zone.type == hand and enter_object.type == "Card" then
+        --has to do with special cards that allow drawing
         if current_phase == 2 and after_eject_color ~= "none" then
           -- make no changes when its a neutrino as the neutrino will retrigger this function
           if enter_object.getName() ~= "Neutrino" then
@@ -812,7 +841,7 @@ function onRoundChange()
         end
 
         -- monitors draws to know when to end the phase
-        if current_Phase == 1 then
+        if current_phase == 1 then
           -- check if all cards have been drawn and end phase
           if enter_object.getName() ~= "Neutrino" then
             player_draws[zone.color] = player_draws[zone.color] - 1
@@ -840,37 +869,28 @@ function onRoundChange()
           1)
         end
       end
-
-      if scoring_zone[zone.getName()] == "True" then
-        Wait.time(
-          function()
-            updateScore(zone, enter_object)
-          end,
-        2)
-      end
     end
   end
 
-  function onObjectLeaveZone(zone, leave_object)
-    if leave_object ~= nil and zone ~= nil then
-      if scoring_zone[zone.getName()] then
-        Wait.time(
-          function()
-            updateScore(zone, enter_object)
-          end,
-        2)
-      end
-    end
-  end
+  --function onObjectLeaveZone(zone, leave_object)
+  --if leave_object ~= nil and zone ~= nil then
+  --if scoring_zone[zone.getName()] then
+  --updateScore(zone, enter_object)
+  --end
+  --end
+  --end
 
-  function updateScore(zone, object)
+  function updateScore(data)
+    local zone = data["zone"]
+    local object = data["object"]
+    local state = data["state"]
+
     if object == nil or zone == nil then
       return
     end
 
     local name = zone.getName()
     local score = 0
-    local score_button = getObjectFromGUID("652e27")
 
     -- updating score when items are placed in zone
     local area_name = string.sub(name, #name - 3)
@@ -879,15 +899,22 @@ function onRoundChange()
     local objects = zone.getObjects()
 
     if area_name == "Zone" and #objects > 0 then
-      score = score_button.call("calculateScore", color)
+      score = three_ev_bag.call("calculateScore", color)
       build_board.call("updateScoreText", score)
-      handleSpecialCard(color, object)
+      --the event trigger enter collision or exit collision
+      if state == "enter" then
+        addSpecialCard(color, object)
+      end
+      if state == "exit" then
+        removeSpecialCard(color, object)
+      end
+
     end
 
     if area_name == "Coin" and #objects > 0 then
       coin_board = getObjectFromGUID(coin_board_guids[color])
-      value = score_button.call("calculateCoins", color)
-      score = score_button.call("calculateScore", color)
+      value = three_ev_bag.call("calculateCoins", color)
+      score = three_ev_bag.call("calculateScore", color)
       coin_board.call("updateCoinText", value)
       build_board.call("updateScoreText", score)
     end

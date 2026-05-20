@@ -2,3 +2,20 @@
 function updateCoinText(value)
   self.UI.setAttribute("blue_coins", "text", value .." eV")
 end
+
+local coin_zone_guids = nil
+local zone = nil
+
+function onLoad()
+  self.registerCollisions(false)
+  coin_zone_guids = Global.getTable("coin_zone_guids")
+  zone = getObjectFromGUID(coin_zone_guids["Blue"])
+end
+
+function onCollisionEnter(collision_info)
+  Global.call("updateScore", {["zone"] = zone, ["object"] = collision_info.collision_object, ["state"] = "none"})
+end
+
+function onCollisionExit(collision_info)
+  Global.call("updateScore", {["zone"] = zone, ["object"] = collision_info.collision_object, ["state"] = "none"})
+end

@@ -2,3 +2,20 @@
 function updateScoreText(score)
   self.UI.setAttribute("green_score", "text", "Current Score: " ..score)
 end
+
+local build_zone_guids = nil
+local zone = nil
+
+function onLoad()
+  self.registerCollisions(false)
+  build_zone_guids = Global.getTable("build_zone_guids")
+  zone = getObjectFromGUID(build_zone_guids["Green"])
+end
+
+function onCollisionEnter(collision_info)
+  Global.call("updateScore", {["zone"] = zone, ["object"] = collision_info.collision_object, ["state"] = "enter"})
+end
+
+function onCollisionExit(collision_info)
+  Global.call("updateScore", {["zone"] = zone, ["object"] = collision_info.collision_object, ["state"] = "exit"})
+end
