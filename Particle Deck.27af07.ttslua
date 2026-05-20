@@ -3,9 +3,16 @@
 -- add control to prevent people drawing cards out of turn
 local turn_control = nil
 
+local players = {}
+
 function onLoad()
   self.memo = "Particle Deck"
   turn_control = getObjectFromGUID("90061a")
+  players = Global.call("getPlayers")
+end
+
+function onPlayerChangeColor( player_color)
+  players = Global.call("getPlayers")
 end
 
 local min_deck_size = {
@@ -25,9 +32,12 @@ function attemptDeckReshuffle(container)
   -- use putObject
   if container.type == "Deck" then
     local deck_name = container.memo
-    local players = getSeatedPlayers()
     if #container.getObjects() <= min_deck_size[deck_name][#players] then
       local discard_zone = getObjectFromGUID(deck_discard_guids[deck_name])
+      if discard_zone.getObjects() == nil then
+        -- if there are no objects in the discard zone can't reshuffle
+        return
+      end
       local discard_objs = discard_zone.getObjects()
       local discard_deck = nil
 
@@ -52,7 +62,6 @@ local main_decks = {
 }
 
 function onObjectLeaveContainer(container, leave_object)
-
   if leave_object.type == "Card" then
     leave_object.addContextMenuItem("Eject Card", ejectCard)
   end
@@ -93,12 +102,15 @@ local ejection_allowances = {
 
 -- something wrong in this function, triggering twice for first player
 function onEjectionPhaseStart()
-  local players = getSeatedPlayers()
+  local selection_cards = Global.getTable("selection_cards")
+  local neutrinos_in_hand = Global.getTable("neutrinos_in_hand")
 
   for i = 1, #players do
     local player_color = players[i]
     local cards = Player[player_color].getHandObjects()
     local positronium = Global.getTable("multiCardPowers")[player_color]["Positronium"]
+    local pion_before_eject = Global.getTable("singleCardPowers")["Pion Before Eject"]
+    local current_round = Global.getVar("current_round")
 
     local card_count = 0
     for j = 1, #cards do
@@ -106,28 +118,55 @@ function onEjectionPhaseStart()
         card_count = card_count + 1
       end
     end
+
+    --account for extra draws player will get with before eject Pion
+    if pion_before_eject ~= "none" and pion_before_eject == player_color then
+      card_count = card_count + math.floor(current_round / 2)
+      broadcastToColor("You get to draw " .. math.floor(current_round / 2) .. " due to your completed pion.", player_color)
+    end
+
+    if selection_cards[player_color] ~= nil and #selection_cards[player_color] > 0 then
+      card_count = card_count + 1
+    end
+
+    -- also count neutrinos not yet resolved (not in hand)
+    if neutrinos_in_hand[player_color] ~= nil and #neutrinos_in_hand[player_color] > 0 then
+      card_count = card_count + #neutrinos_in_hand[player_color]
+    end
+
     ejection_allowances[player_color] = math.floor(card_count / 5)
 
     card_count = 0
 
-    local min_ejection = ejection_allowances[player_color] - positronium
-    if min_ejection == 0 then
-      if ejection_allowances[player_color] == 0 then
-        broadcastToColor("You do not need to eject any cards.", player_color)
-      else
-        broadcastToColor("You may eject between 0 and " ..ejection_allowances[player_color].. " card(s).", player_color)
-      end
-
-    elseif min_ejection == ejection_allowances[player_color] then
-      broadcastToColor("You must eject " .. ejection_allowances[player_color].. " cards.", player_color)
-    else
-      broadcastToColor("You must eject at least " ..min_ejection.. " card(s). But you can eject up to " ..ejection_allowances[player_color].. " card(s).", player_color)
+    if current_round == 5 then
+      broadcastToAll("Final round, no ejection limits!")
     end
+
+    local min_ejection = ejection_allowances[player_color] - (positronium * 2) --2 less cards to eject per positronium
+    if min_ejection <= 0 then
+      if ejection_allowances[player_color] == 0 then
+        broadcastToColor("Ejection Phase: You do not eject any cards.", player_color)
+      else
+        broadcastToColor("Ejection Phase: You may eject between 0 and " ..ejection_allowances[player_color].. " card(s).", player_color)
+      end
+    elseif min_ejection == ejection_allowances[player_color] then
+      broadcastToColor("Ejection Phase: You must eject " .. ejection_allowances[player_color].. " cards.", player_color)
+    else
+      broadcastToColor("Ejection Phase: You must eject at least " ..min_ejection.. " card(s). But you can eject up to " ..ejection_allowances[player_color].. " card(s).", player_color)
+    end
+
+
   end
 end
 
 function setEjectionsToZero(player)
-  ejection_allowances[player.color] = 0
+  local positronium = Global.getTable("multiCardPowers")[player.color]["Positronium"]
+  if ejection_allowances[player.color] - positronium > 0 then
+    broadcastToColor("You have not ejected enough cards. You cannot end your turn.", player.color)
+    return
+  else
+    ejection_allowances[player.color] = 0
+  end
 
   local ejections_remaining = ejection_allowances["Yellow"] + ejection_allowances["Blue"] + ejection_allowances["Green"] + ejection_allowances["Red"]
 
@@ -139,12 +178,11 @@ function setEjectionsToZero(player)
 end
 
 function onEjectionPhaseEnd()
-  local positronium = Global.getTable("multiCardPowers")[player_color]["Positronium"]
-  local players = getSeatedPlayers()
-
   local roundEndFail = false
 
   for i = 1, #players do
+    local player_color = players[i]
+    local positronium = Global.getTable("multiCardPowers")[player_color]["Positronium"]
     local ejections = ejection_allowances[players[i]]
     if ejections ~= 0 and positronium < ejections then
       broadcastToAll(players[i].. " has not ejected enough cards so the phase cannot be ended!")
@@ -152,8 +190,7 @@ function onEjectionPhaseEnd()
     end
   end
 
-  if foundEndFail == false then
-    log("ejection_phase_ended")
+  if roundEndFail == false then
     Global.UI.setAttributes("end_eject", {active = false, visibility = "hidden"})
     Global.UI.setAttribute("turn_panel", "active", true)
     Global.call("checkForNeutrinos")
@@ -164,7 +201,6 @@ end
 function ejectCard(player_color, position, object)
   local single_card_powers = Global.getTable("singleCardPowers")
   local down_annihilation_color = single_card_powers["Down Annihilation"]
-  local pion_after_eject = single_card_powers["Pion After Eject"]
   local eject_zone = getObjectFromGUID("0cb1ea")
   local eject_zone_location = eject_zone.getPosition()
 
@@ -208,33 +244,13 @@ function ejectCard(player_color, position, object)
       one_ev_bag.call("dealCoins", {["value"] = 1, ["player_color"] = player_color})
     end
 
-    local ejections_remaining = ejection_allowances["Yellow"] + ejection_allowances["Blue"] + ejection_allowances["Green"] + ejection_allowances["Red"]
-
-    if ejections_remaining == 0 then
-      ejectionEndSteps()
-    end
-
   else
     print("You can only eject cards in your hand!")
   end
 end
 
 function ejectionEndSteps()
-  local players = getSeatedPlayers()
-
-  for i = 1, #players do
-    local player_color = players[i]
-    if pion_after_eject == player_color then
-      local round = Global.getVar("current_round")
-      local draw_amount = math.floor(round / 2)
-      broadcastToAll(player_color.. " must draw " ..draw_amount.. " card(s) before the round ends.")
-      --exit function so round doesn't end until cards are drawn
-      return
-    end
-  end
-
-  --if we are not waiting for the player with pion_after_eject card
-  -- to draw extra cards then we end the round
+  broadcastToAll("Discovery Phase starting please wait.")
   Wait.time(
     function()
       Global.setVar("neutrinosEndRound", true)

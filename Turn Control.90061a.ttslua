@@ -3,8 +3,8 @@
 local player_order = {}
 local order_player = {}
 local current_turn = "none"
-local num_order = {[1] = "Red", [2] = "Green", [3] = "Blue", [4] = "Yellow"}
-local order_num = {["Red"] = 1, ["Green"] = 2, ["Blue"] = 3, ["Yellow"] = 4}
+num_order = {[1] = "Red", [2] = "Green", [3] = "Blue", [4] = "Yellow"}
+order_num = {["Red"] = 1, ["Green"] = 2, ["Blue"] = 3, ["Yellow"] = 4}
 local skip_player = {}
 local player_count = 0
 
@@ -33,7 +33,7 @@ function get_player_count()
 end
 
 function initiate_turns()
-  local players = getSeatedPlayers()
+  local players = Global.call("getPlayers")
   player_count = #players
 
   table.sort(players,
@@ -54,13 +54,11 @@ function initiate_turns()
 end
 
 function add_skip(player_color)
-  local players = getSeatedPlayers()
-  log("Add skip called, count skips")
-  log(count_skips())
-  if count_skips() < #players then
+  local players = Global.call("getPlayers")
+
+  if count_skips() < #players - 1 then
     skip_player[player_color] = "skip"
   end
-  log("skip player table")
 end
 
 function count_skips()
@@ -78,7 +76,7 @@ function remove_skip(player_color)
 end
 
 function clear_skip()
-  local players = getSeatedPlayers()
+  local players = Global.call("getPlayers")
   for i = 1, #players do
     skip_player[players[i]] = "none"
   end
@@ -101,8 +99,8 @@ function next_turn()
       break
     end
   end
-
   current_turn = order_player[index]
+
   update_turn_ui(current_turn)
 
   return order_player[index]
@@ -118,7 +116,7 @@ function set_turn(player_color)
 end
 
 function update_turn_ui(player_color)
-  local players = getSeatedPlayers()
+  local players = Global.call("getPlayers")
   local visibility_set = ""
   for i = 1, #players do
     if players[i] == player_color then

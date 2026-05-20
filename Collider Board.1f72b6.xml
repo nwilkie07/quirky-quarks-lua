@@ -20,8 +20,12 @@
   <Text id="kekb_bid" color="#000000" fontSize="60" text="Bid: 0"/>
 </Panel>
 
-<Panel padding="16 16 16 16" id="discovery_panel" border="#000000" Width="400" Height="100" scale="0.25 0.25 1" rotation="0 0 180" position="0 87 -11" color="#FFFFFF" visibility="hidden">
+<Panel padding="16 16 16 16" id="discovery_panel" border="#000000" Width="400" Height="100" scale="0.25 0.25 1" position="0 87 -11" color="#FFFFFF" visibility="hidden">
   <HorizontalLayout>
-    <Text id="discovery_bid" color="#000000" fontSize="60" text="Bid: 0"/>
+  <Button onClick="9f4d22/increaseBid" color="#FFFFFF" fontSize="60" text="+"/>
+    <Text id="discovery_bid" color="#000000" fontSize="60" text="Bid: 0" rotation="0 0 180" />
   </HorizontalLayout>
 </Panel>
+
+
+<Text id="round_tracker" text="Round 1: Funding Phase" outline="#000000" shadow="#000000" color="#FFFFFF" scale="0.25 0.25 1" rotation="0 0 180" position="0 -175 -280" fontSize="100"/>

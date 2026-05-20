@@ -1,3 +1,8 @@
+local players = {}
+
+local board = nil
+
+
 function onLoad()
   params = {
     click_function = "start_game",
@@ -11,11 +16,16 @@ function onLoad()
   }
   self.createButton(params)
   self.interactable = false
+  players = Global.call("getPlayers")
+  board = Global.getVar("collider_board")
+end
+
+function onPlayerChangeColor(player_color)
+  players = Global.call("getPlayers")
 end
 
 function start_game()
   local starting_card = getObjectFromGUID("de36d4")
-  local players = getSeatedPlayers()
   local turn_control = getObjectFromGUID("90061a")
 
   if #players <= 1 then
@@ -26,17 +36,16 @@ function start_game()
   Turns.enable = false
   turn_control.call("initiate_turns")
   local first_player = turn_control.call("get_current_turn")
-  log(first_player)
 
   Global.setVar("starting_physicist", first_player)
 
-  starting_card_positions = Global.getTable("starting_card_positions")
+  local starting_card_positions = Global.getTable("starting_card_positions")
   starting_card.setPositionSmooth(starting_card_positions[first_player])
 
-  particles = Global.getVar("particles_deck")
-  round_die = Global.getVar("round_die")
-  phase_die = Global.getVar("phase_die")
-  pos = Global.getVar("collider_board").getPosition()
+  local particles = Global.getVar("particles_deck")
+  local round_die = Global.getVar("round_die")
+  local phase_die = Global.getVar("phase_die")
+  local pos = Global.getVar("collider_board").getPosition()
 
   round_die.setPosition({pos[1] - 3.02, pos[2] + 1, pos[3] - 5.28})
   phase_die.setPosition({pos[1] - 3.02, pos[2] + 1, pos[3] + 2.91})
@@ -47,30 +56,44 @@ function start_game()
 
 
   if #players == 2 then
-    Wait.time(
+    -- Wait for initial cards to be dealt before placing coins
+    Wait.condition(
       function()
         deal_coins(particles, True)
-      end
-    , 1)
-    Wait.time(
-      function()
-        board.call("two_player_deal")
-      end
-    , 2)
+        -- Wait for coins to settle before dealing collider cards
+        Wait.condition(
+          function()
+            board.call("two_player_deal")
+          end,
+          function()
+            -- Check that coins have settled
+            return allCoinsResting()
+          end,
+          15, function() log("WARNING: Timeout waiting for coins to rest"); board.call("two_player_deal") end
+        )
+      end,
+      function() return particles ~= nil and particles.resting end,
+      15, function() log("WARNING: Timeout waiting for particle deck to rest"); deal_coins(particles, True) end
+    )
   end
 
   if (#players == 3) or (#players == 4) then
-    Wait.time(
+    -- Wait for initial cards to be dealt before dealing collider cards
+    Wait.condition(
       function()
         board.call("four_player_deal")
-      end
-    , 1)
-
-    Wait.time(
-      function()
-        deal_coins(particles, false)
-      end
-    , 2)
+        -- Wait for collider dealing to start, then deal coins
+        Wait.condition(
+          function()
+            deal_coins(particles, false)
+          end,
+          function() return particles ~= nil and particles.resting end,
+          15, function() log("WARNING: Timeout waiting for particle deck"); deal_coins(particles, false) end
+        )
+      end,
+      function() return particles ~= nil and particles.resting end,
+      15, function() log("WARNING: Timeout waiting for particles deck to rest"); board.call("four_player_deal") end
+    )
   end
 end
 
@@ -78,22 +101,46 @@ function initial_setup(particles)
   -- deal out cards and quest to people
   particles.shuffle()
   particles.deal(3)
-  quest_one = Global.getVar("quest1_deck")
+  local quest_one = Global.getVar("quest1_deck")
   quest_one.shuffle()
   quest_one.deal(1)
-  board = Global.getVar("collider_board")
-
 
   --shuffling quest 2 deck
   local quest_two = Global.getVar("quest2_deck")
   quest_two.shuffle()
 
-  -- resolve Neutrinos, end phase after this action
-  Wait.time(
+  -- resolve Neutrinos after cards have settled in hands
+  Wait.condition(
     function()
       Global.call("checkForNeutrinos")
+    end,
+    function()
+      -- Wait until both decks are resting after dealing
+      return particles.resting and quest_one.resting
+    end,
+    15,
+    function()
+      log("WARNING: Timeout waiting for initial deal to complete, checking neutrinos anyway")
+      Global.call("checkForNeutrinos")
     end
-  , 5)
+  )
+end
+
+-- Helper: checks if all coin objects in all player zones are resting
+function allCoinsResting()
+  local coin_zone_guids = Global.getTable("coin_zone_guids")
+  for _, guid in pairs(coin_zone_guids) do
+    local zone = getObjectFromGUID(guid)
+    if zone then
+      local objects = zone.getObjects()
+      for _, obj in ipairs(objects) do
+        if obj and not obj.resting then
+          return false
+        end
+      end
+    end
+  end
+  return true
 end
 
 function deal_coins(particles, isTwoPlayer)
@@ -101,14 +148,18 @@ function deal_coins(particles, isTwoPlayer)
   local three_ev = Global.getVar("three_ev_bag")
 
   --places starting money in coin areas
-  coin_guids = Global.getTable("coin_board_guids")
+  local coin_guids = Global.getTable("coin_board_guids")
   players = getSeatedPlayers()
   for i = 1, #players do
-    coin_area = getObjectFromGUID(coin_guids[players[i]])
+    local coin_area = getObjectFromGUID(coin_guids[players[i]])
     pos = coin_area.getPosition()
-    x_mod = 1.5
-    y = pos["y"] + 1
-    z_mod = pos["z"] + 1.5
+    local x_mod = 1.5
+    local y = pos["y"] + 1
+    local z_mod = pos["z"] + 1.5
+
+    if players[i] == "Blue" or players[i] == "Green" then
+      z_mod = pos["z"] - 1.5
+    end
 
     one_ev.takeObject({
       position = {pos["x"] - x_mod, y, pos["z"]}
@@ -131,9 +182,18 @@ function deal_coins(particles, isTwoPlayer)
       position = {pos["x"], y, z_mod}
     })
 
-    Wait.time(function()
-      self.destruct()
-    end, 7)
+    -- Destroy start button once all coins have settled
+    Wait.condition(
+      function()
+        self.destruct()
+      end,
+      function() return allCoinsResting() end,
+      20,
+      function()
+        log("WARNING: Timeout waiting for coins, destroying start button anyway")
+        self.destruct()
+      end
+    )
 
   end
 end

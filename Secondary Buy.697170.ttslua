@@ -2,3 +2,13 @@ function onLoad()
   self.registerCollisions()
   self.interactable = false
 end
+
+function onCollisionEnter(collision)
+  --recording the card (Quest) that has been placed on the buy board
+  local buy_card = getObjectFromGUID("6425d0")
+  local hit_object = collision["collision_object"]
+  local purchase_object = buy_card.getVar("purchase_object")
+  if hit_object.type == "Card" and purchase_object ~= hit_object then
+    buy_card.setVar("purchase_object",hit_object)
+  end
+end

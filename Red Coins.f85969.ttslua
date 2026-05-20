@@ -11,6 +11,7 @@ function onLoad()
   self.registerCollisions(false)
   coin_zone_guids = Global.getTable("coin_zone_guids")
   zone = getObjectFromGUID(coin_zone_guids["Red"])
+  zone.memo = "Coin"
 end
 
 function onCollisionEnter(collision_info)

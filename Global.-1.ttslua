@@ -1,3 +1,16 @@
+-- ============================================================
+-- PHASE CONSTANTS
+-- ============================================================
+PHASE_FUNDING = 1
+PHASE_RESEARCH = 2
+PHASE_EJECTION = 3
+PHASE_DISCOVERY = 4
+PHASE_QUEST = 5
+MAX_ROUNDS = 5
+
+-- ============================================================
+-- GUID MAPS (single source of truth)
+-- ============================================================
 color_hand_guid = {
   ["Red"] = "0e9106",
   ["Yellow"] = "3e5ce5",
@@ -7,10 +20,10 @@ color_hand_guid = {
 
 --only one use
 starting_card_positions = {
-  ["Red"] = { - 8.00, 1.00, - 9.00},
-  ["Blue"] = {14, 1.00, 9.00},
-  ["Green"] = { - 8.00, 1.00, 9.00},
-  ["Yellow"] = {14.01, 1, - 9},
+  ["Red"] = { - 17.34, 1.00, - 9.00},
+  ["Blue"] = {17.53, 1.00, 9.00},
+  ["Green"] = { - 4.37, 1.00, 9.00},
+  ["Yellow"] = {4.71, 1, - 9},
 }
 
 -- research figurines
@@ -20,20 +33,6 @@ figurine_guids = {
   ["Blue"] = "caaafc",
   ["Green"] = "96ef5c",
   ["Yellow"] = "b681f1"
-}
-
--- guid to color
-player_zones = {["0e9106"] = "Red",
-  ["3e5ce5"] = "Yellow",
-  ["fddd12 "] = "Blue",
-["89a98c"] = "Green"}
-
---boards where players place built quests
-layout_zones = {
-  ["Red"] = "f1ae5e",
-  ["Blue"] = "a157d6",
-  ["Yellow"] = "a157d6",
-  ["Green"] = "3cd4dd"
 }
 
 --build zone guids
@@ -46,10 +45,10 @@ build_zone_guids = {
 
 --coin zone guids
 coin_zone_guids = {
-  ["Red"] = "b188aa",
-  ["Yellow"] = "4f2a3f",
-  ["Blue"] = "cfbcd0",
-  ["Green"] = "bbded6"
+  ["Red"] = "bc28f9",
+  ["Yellow"] = "518604",
+  ["Blue"] = "2431e4",
+  ["Green"] = "cc3069"
 }
 
 build_board_guids = {
@@ -170,8 +169,9 @@ card_values = {
   ["E Annihilation"] = 0,
   ["Down Annihilation"] = 4,
   ["Pion Before Eject"] = 3,
-  ["Pion Round Start"] = 0,
-  ["Pion After Eject"] = 3
+  ["Pion After Eject"] = 3,
+  ["Green Pion Start"] = 0,
+  ["Blue Pion Start"] = 0
 }
 
 phase_text = {
@@ -198,6 +198,15 @@ phase_dice_pos = {
   [5] = { - 26.98, 1.36, 5.20},
 }
 
+--change to relative to board
+round_dice_pos = {
+  [1] = { - 27.02, 1.39, - 5.28},
+  [2] = { - 27.02, 1.39, - 4.61},
+  [3] = { - 27.02, 1.39, - 4.11},
+  [4] = { - 27.02, 1.39, - 3.53},
+  [5] = { - 27.02, 1.39, - 2.93},
+}
+
 selection_cards = {
   ["Red"] = {},
   ["Yellow"] = {},
@@ -212,62 +221,41 @@ neutrinos_in_hand = {
   ["Green"] = {}
 }
 
-local neutrino_count = 0
-
-scoring_zone = {
-  ["Red Zone"] = "True",
-  ["Blue Zone"] = "True",
-  ["Yellow Zone"] = "True",
-  ["Green Zone"] = "True",
-  ["Red Coin"] = "True",
-  ["Yellow Coin"] = "True",
-  ["Blue Coin"] = "True",
-  ["Green Coin"] = "True",
-}
-
 singleCardPowers = {
   ["Down Annihilation"] = "none",
-  ["Up annihilation"] = "none",
+  ["Up Annihilation"] = "none",
   ["Wigner Crystal"] = "none",
   ["Pion Before Eject"] = "none",
   ["Pion After Eject"] = "none",
   ["Blue Pion Start"] = "none",
   ["Green Pion Start"] = "none",
+  ["E Annihilation"] = "none"
 }
 
--- Positronium
+-- Gluonium is managed in buy card object
+-- positronium affects ejection behavior
+-- proton/neutron could affect purchasing
 multiCardPowers = {
   ["Red"] = {
     ["Proton"] = 0,
     ["Neutron"] = 0,
-    ["Gluonium"] = 0,
     ["Positronium"] = 0
   },
   ["Blue"] = {
     ["Proton"] = 0,
     ["Neutron"] = 0,
-    ["Gluonium"] = 0,
     ["Positronium"] = 0
   },
   ["Green"] = {
     ["Proton"] = 0,
     ["Neutron"] = 0,
-    ["Gluonium"] = 0,
     ["Positronium"] = 0
   },
   ["Yellow"] = {
     ["Proton"] = 0,
     ["Neutron"] = 0,
-    ["Gluonium"] = 0,
     ["Positronium"] = 0
   }
-}
-
-turn_orders = {
-  ["Yellow"] = {"Yellow", "Red", "Green", "Blue"},
-  ["Green"] = {"Green", "Blue", "Yellow", "Red"},
-  ["Blue"] = {"Blue", "Yellow", "Red", "Green"},
-  ["Red"] = {"Red", "Green", "Blue", "Yellow"}
 }
 
 current_round = 1
@@ -293,6 +281,10 @@ collider_board = nil
 ejection_pile = nil
 buy_card = nil
 
+-- Gluonium tracking variables - moved to Global for reliable access
+spent_gluonium = {["Red"] = 0, ["Blue"] = 0, ["Green"] = 0, ["Yellow"] = 0}
+gluonium_tracker = {["Red"] = 0, ["Blue"] = 0, ["Green"] = 0, ["Yellow"] = 0}
+
 one_ev_bag = nil
 three_ev_bag = nil
 
@@ -301,6 +293,7 @@ player_index = {}
 index_player = {}
 player_order = {}
 player_turn = "none"
+local turn_control = nil
 
 color_table = {
   ["Red"] = "#FF0000",
@@ -308,6 +301,31 @@ color_table = {
   ["Blue"] = "#0B00FF",
   ["Yellow"] = "#FFEC00"
 }
+
+options = {}
+
+--variable to control if the phase/round should change after checking neutrinos
+neutrinosEndRound = false
+
+colliders_complete = false
+
+--tracks cards quantity to prevent unnecessary calls in neutrino functions
+cards_in_hand = {
+  ["Red"] = 0,
+  ["Blue"] = 0,
+  ["Yellow"] = 0,
+  ["Green"] = 0
+}
+
+player_draws = {} --initializer for tracking player draws
+
+players = {} -- array listing current seated players
+
+-- ============================================================
+-- COLLISION DEBOUNCE
+-- ============================================================
+local collision_cooldown = {}
+local COLLISION_COOLDOWN_TIME = 0.5
 
 --[[ The onLoad event is called after the game save finishes loading. --]]
 -- setup variables used by many functions, call and change them here so we can change them only once
@@ -334,68 +352,83 @@ function onLoad()
   phase_die = getObjectFromGUID("1050fc")
 
   buy_card = getObjectFromGUID("6425d0")
+  turn_control = getObjectFromGUID("90061a")
+
+  players = getPlayers()
+end
+
+function onPlayerChangeColor(player_color)
+  players = getPlayers()
+end
+
+function getPlayers()
+  local playerSet = {}
+  if Player.Red.seated then
+    table.insert(playerSet, "Red")
+  end
+  if Player.Green.seated then
+    table.insert(playerSet, "Green")
+  end
+  if Player.Blue.seated then
+    table.insert(playerSet, "Blue")
+  end
+  if Player.Yellow.seated then
+    table.insert(playerSet, "Yellow")
+  end
+  return playerSet
 end
 
 --called when people bid on an object in the discovery phase
 function onObjectCollisionEnter(object, collision_info)
   local collision_object = collision_info.collision_object
 
-  if (collision_object.type == "Card" or collision_object.type == "Deck") and object.memo == "physicist" then
+  -- Debounce: prevent multiple triggers from physics bounces
+  -- local guid = object.getGUID()
+  -- if collision_cooldown[guid] then return end
+  --
+  -- collision_cooldown[guid] = true
+  -- Wait.time(function() collision_cooldown[guid] = nil end, COLLISION_COOLDOWN_TIME)
+
+  -- player is not allowed to bid so return
+  if object.getName() ~= turn_control.call("get_current_turn") then
+    return
+  end
+
+  if current_phase == 4 and (collision_object.type == "Card" or collision_object.type == "Deck") and object.memo == "physicist" then
     ejection_pile.call("calculateBid", {["player_color"] = object.getName(), ["object"] = collision_object})
   end
 end
 
-function isPlayerSeated(color)
-  local players = getSeatedPlayers()
-  for i = 1, #players do
-    if players[i] == color then
-      return true
-    end
-  end
-  return false
-end
-
-
-
--- so we can prevent players from ejecting too many cards
-ejections_allowed = {}
-
---so we can track the player with the pion_before_eject cards drawn
-before_ejection_draws = {}
-
---so we can track the player with the pion_after_eject cards drawn
-after_ejection_draws = {}
-
-options = {}
 function setOptions(cardType)
   table.insert(options, cardType)
-end
-
-function toggleOption(player, value, id)
-  isOn = UI.setAttribute(id, "isOn", value)
-  attributes = UI.getAttributes(id)
 end
 
 function complexPurchase(player, value, id)
   buy_card.call("complexPurchase", {player, value, id})
 end
 
-
---variable to control if the phase/round should change after checking neutrinos
-neutrinosEndRound = false
-
---tracks cards quantity to prevent unnecessary calls in neutrino functions
-cards_in_hand = {
-  ["Red"] = 0,
-  ["Blue"] = 0,
-  ["Yellow"] = 0,
-  ["Green"] = 0
-}
 -- loops through hands and check if players have neutrino cards
 -- neutrino cards must be resolved immediately
-function checkForNeutrinos()
-  local players = getSeatedPlayers()
+local handleNeutrinoCalled = {
+  ["Green"] = false,
+  ["Blue"] = false,
+  ["Red"] = false,
+  ["Yellow"] = false
+}
 
+local neutrinoCheckScheduled = false
+local neutrinosInProgress = 0
+
+function contains(theTable, card)
+  for i = 1, #theTable do
+    if theTable[i].guid == card.guid then
+      return true
+    end
+  end
+  return false
+end
+
+function checkForNeutrinos()
   --goes through player hands to find neutrinos
   for i = 1, #players do
     local player_color = players[i]
@@ -403,223 +436,44 @@ function checkForNeutrinos()
     local hand_objects = getObjectFromGUID(hand_guid).getObjects()
 
     --if this hand has not changed in number of cards then don't check for neutrinos
-    if cards_in_hand[player_color] < #hand_objects then
-      for i = 1, #hand_objects do
-        local card = hand_objects[i]
-        if card.getName() == "Neutrino" then
-          table.insert(neutrinos_in_hand[player_color], card)
-          neutrino_count = neutrino_count + 1
-        end
+    for j = 1, #hand_objects do
+      local card = hand_objects[j]
+      --contains function prevents multiple triggers
+      if card.getName() == "Neutrino"
+      and contains(neutrinos_in_hand[player_color], card) == false
+      and particle_discard_zone ~= nil
+      and contains(particle_discard_zone.getObjects(), card) == false then
+        table.insert(neutrinos_in_hand[player_color], card)
       end
-      cards_in_hand[player_color] = #hand_objects
-      -- call the function to give the player selection of the card
-      if #neutrinos_in_hand[player_color] > 0 then
-        handleNeutrino(player_color)
-      end
+    end
+    -- call the function to give the player selection of the card
+    if #neutrinos_in_hand[player_color] > 0 and handleNeutrinoCalled[player_color] == false then
+      handleNeutrinoCalled[player_color] = true
+      handleNeutrino(player_color)
     end
   end
 
+  local current_neutrinos = 0
+  for i = 1, #players do
+    local thePlayer = players[i]
+    if neutrinos_in_hand[thePlayer] ~= nil then
+      current_neutrinos = current_neutrinos + #neutrinos_in_hand[thePlayer]
+    end
+  end
   --Ends Funding phase and Research (bidding) phase
   -- and current_phase + current_round == 2
-  if neutrino_count == 0 and neutrinosEndRound == true then
+  if current_neutrinos == 0 and neutrinosInProgress == 0 and neutrinosEndRound == true then
     endPhase()
     neutrinosEndRound = false
   end
-end
 
-function updateGluoniumTracker()
-  local players = getSeatedPlayers()
-
-  --goes through player build zones to find build Gluonium cards
-  for i = 1, #players do
-    local player_color = players[i]
-    local build_guid = build_zone_guids[player_color]
-    local quest_cards = getObjectFromGUID(build_guid).getObjects()
-    local gluonium_tracker = {
-      ["Red"] = 0,
-      ["Blue"] = 0,
-      ["Green"] = 0,
-      ["Yellow"] = 0
-    }
-
-    -- looks through player cards to see if anyone
-    for i = 1, #quest_cards do
-      if quest_cards[i].getName() == "Gluonium" then
-        gluonium_tracker[player_color] = gluonium_tracker[player_color] + 1
-      end
-    end
-    buy_card.call("setGluoniumTracker", gluonium_tracker)
-  end
-end
-
-beforeEjectDrawComplete = false
-before_eject_color = "none"
-before_eject_draw = 0
-function endPhase()
-  --cannot end the phase until special cards are resolved
-  if singleCardPowers["Pion Before Eject"] ~= "none" and current_phase == 2 and beforeEjectDrawComplete == false then
-    before_eject_color = singleCardPowers["Pion Before Eject"]
-    before_eject_draw = math.floor(current_round / 2)
-    -- make a call to a function that waits to end the round after cards are drawn
-    return
-  else
-    --reset so the check is performed on each round
-    beforeEjectDrawComplete = false
-  end
-
-  if current_phase >= 5 then
-    current_phase = 1
-    onRoundChange()
-  else
-    current_phase = current_phase + 1
-
-    -- tell player to draw 2 cards
-    if singleCardPowers["Green Pion Start"] ~= "none" and current_phase == 3 then
-      broadcastToAll(singleCardPowers["Pion After Eject"].. " must draw " ..math.floor(current_round).. " cards.", Table)
-    end
-
-    onPhaseChange()
-  end
-end
-
-draw_card_tracker = {
-  ["Yellow"] = {},
-  ["Red"] = {},
-  ["Blue"] = {},
-  ["Green"] = {}
-}
-
-
-local turn_count = 0
-function trackQuestPhase()
-  local turn_control = getObjectFromGUID("90061a")
-  local players = getSeatedPlayers()
-  if turn_count >= #players then
-    log(turn_count, "", "Made it to round change! Turn_count")
-    onRoundChange()
-  else
-    turn_count = turn_count + 1
-    turn_control.call("next_turn")
-  end
-end
-
---being called twice?
-function onPhaseChange()
-  local turn_control = getObjectFromGUID("90061a")
-  local players = getSeatedPlayers()
-
-  phase_die.setRotationSmooth(dice_rot[current_phase])
-  phase_die.setPositionSmooth(phase_dice_pos[current_phase])
-
-  --Phase one is handled by onRoundChange
-  if current_phase == 2 then
-    --Research Phase, show bid buttons
-    collider_board.UI.setAttribute("slac_panel", "visibility", "")
-    collider_board.UI.setAttribute("tevatron_panel", "visibility", "")
-    collider_board.UI.setAttribute("esrf_panel", "visibility", "")
-    collider_board.UI.setAttribute("lhc_panel", "visibility", "")
-
-    if #players == 4 then
-      collider_board.UI.setAttribute("kekb_panel", "visibility", "")
-    end
-
-    broadcastToAll("Research phase starts. " ..starting_physicist.. " bids first.")
-  elseif current_phase == 3 then
-    --Ejection Phase send message to each player on discard amount
-    collider_board.UI.setAttribute("slac_panel", "visibility", "hidden")
-    collider_board.UI.setAttribute("tevatron_panel", "visibility", "hidden")
-    collider_board.UI.setAttribute("esrf_panel", "visibility", "hidden")
-    collider_board.UI.setAttribute("lhc_panel", "visibility", "hidden")
-    collider_board.UI.setAttribute("kekb_panel", "visibility", "hidden")
-
-    particles_deck.call("onEjectionPhaseStart")
-  elseif current_phase == 4 then
-    --Discovery Phase
-    collider_board.UI.setAttribute("discovery_panel", "visibility", "")
-    ejection_pile.call("setupDiscoveryPhase")
-    Global.UI.setAttribute("change_turn", "onClick", "9f4d22/onEndTurn")
-  elseif current_phase == 5 then
-    --Quest Phase
-    Global.UI.setAttribute("change_turn", "onClick", "trackQuestPhase")
-
-  end
-  turn_control.call("set_turn", starting_physicist)
-  UI.setAttribute("round_tracker", "text", "Round " ..current_round.. ": " .. phase_text[current_phase] .. " Phase")
-end
-
-function onRoundChange()
-  local turn_control = getObjectFromGUID("90061a")
-  Global.UI.setAttribute("change_turn", "onClick", "90061a/next_turn")
-  turn_control.call("set_turn", starting_physicist)
-  starting_physicist = turn_control.call("next_turn")
-
-  -- look through player completed quest cards and record gluonium card_cost
-  updateGluoniumTracker()
-
-  if current_round >= 5 then
-    --end game and calculate scores and announce WINNER
-  else
-    current_round = current_round + 1
-    local players = getSeatedPlayers()
-
-    if #players >= 3 then
-      particles_deck.call("four_player_deal")
-    else
-      particles_deck.call("two_player_deal")
-    end
-
-    local players = getSeatedPlayers()
-    --setup player draw tracking
-    for i=1, #players do
-      player_draws[players[i]] = 1
-    end
-
-    -- check for and update player draw_counts if they have these special cards
-    if singleCardPowers["Green Pion Start"] ~= "none" then
-      local color = singleCardPowers["Green Pion Start"]
-      player_draws[color] = player_draws[color] + math.floor(current_round / 2)
-    end
-    -- two if statements in case the player has both cards
-    if singleCardPowers["Blue Pion Start"] ~= "none" then
-      local color = singleCardPowers["Blue Pion Start"]
-      player_draws[color] = player_draws[color] + math.floor(current_round / 2)
-    end
-
-    --loop to deal money to each player and tell them how many cards to draw
-    for i = 1, #players do
-      local player_color = players[i]
-
-      --players get 3 eV each round or more if they have Up Annhilation
-      if singleCardPowers["Up Annihilation"] == player_color then
-        one_ev_bag.call("dealCoins", {["value"] = 3 + current_round, ["player_color"] = player_color})
-      else
-        one_ev_bag.call("dealCoins", {["value"] = 3, ["player_color"] = player_color})
-      end
-
-      broadcastToColor("Draw " ..player_draws[player_color].. " card(s).", player_color)
-    end
-
-  end
-end
-
---sets a table of objects to hidden from all but the provided player
-function hideFromPlayers(objects, player_color)
-  local players = getSeatedPlayers()
-  for i = 1, #players do
-    if players[i] == player_color then
-      table.remove(players, i)
-      break
-    end
-  end
-  for j = 1, #objects do
-    objects[j].setHiddenFrom(players)
-  end
 end
 
 -- places the neutrino in front of the player to make a choice (buttons on cards)
 -- attaches button to cards to resolve (move cards around) after a player selects a card
 function handleNeutrino(player_color)
   local neutrino_card = table.remove(neutrinos_in_hand[player_color])
+  neutrinosInProgress = neutrinosInProgress + 1
 
   local build_board = getObjectFromGUID(build_board_guids[player_color])
   local pos = build_board.getPosition()
@@ -679,296 +533,619 @@ end
 function resolveNeutrino(click_obj, player_color)
   local cards = selection_cards[player_color]
 
-  --if a player selects a neutrino add it to the array to work through
-  if click_obj.getName() == "Neutrino" then
-    table.insert(neutrinos_in_hand[player_color], click_obj)
-    neutrino_count = neutrino_count + 1
-  end
-
   for i = 1, #cards do
-    if cards[i].getButtons() then
+    if cards[i].getButtons() ~= nil then
       cards[i].removeButton(0)
     end
     if cards[i].getGUID() ~= click_obj.getGUID() then
-      Wait.time(
+      Wait.condition(
         function()
           cards[i].setRotation(particle_discard_zone.getRotation())
           cards[i].setPositionSmooth(particle_discard_zone.getPosition())
         end,
-        i * 0.25
+        function()
+          return cards[i] and cards[i].resting
+        end,
+        5,
+        function()
+          log("WARNING: Timeout waiting for neutrino discard card " .. i .. " to rest")
+        end
       )
     else
       cards[i].deal(1, player_color)
     end
   end
 
-  neutrino_count = neutrino_count - 1
-
   -- recursively works through other neutrinos a player hand
+  -- is this not timing properly
   selection_cards[player_color] = {}
-  if #neutrinos_in_hand[player_color] > 0 then
-    Wait.time(
+  neutrinosInProgress = neutrinosInProgress - 1
+
+  Wait.condition(
+    function()
+      handleNeutrinoCalled[player_color] = false
+      checkForNeutrinos()
+    end,
+    function() return click_obj == nil or click_obj.resting end,
+    10,
+    function()
+      -- Timeout fallback: proceed anyway to avoid deadlock
+      log("WARNING: Timeout waiting for neutrino resolution, proceeding anyway")
+      handleNeutrinoCalled[resolved_color] = false
+      checkForNeutrinos()
+    end
+  )
+end
+
+function getPlayerHandItems(color)
+  local hand_items = {}
+  local guid_items = {}
+  local objects = Player[color].getHandObjects(1)
+  if #objects > 0 then
+    for i = 1, #objects do
+      local object = objects[i]
+      local name = object.getName()
+      if hand_items[name] ~= nil then
+        hand_items[name] = hand_items[name] + 1
+      else
+        hand_items[name] = 1
+      end
+      if guid_items[name] == nil then
+        guid_items[name] = {object.guid}
+      else
+        table.insert(guid_items[name], object.guid)
+      end
+    end
+  end
+  return {hand_items, guid_items}
+end
+
+-- this functions records special cards that are placed in the build area for quests
+-- so we can track and enact the abilities for the player
+function addSpecialCard(player_color, object)
+  if object == nil then
+    return
+  end
+
+  local card_name = object.getName()
+  if card_name == nil then
+    return
+  end
+
+-- could add update gluonium tracker here
+
+
+  if singleCardPowers[card_name] ~= nil then
+    -- gain 9 eV immediately
+    if card_name == "E Annihilation" then
+      Wait.condition(
       function()
-        handleNeutrino(player_color)
-      end, 1)
-    end
-
-    cards_in_hand[player_color] = #Player[player_color].getHandObjects()
-
-    --Ends Funding phase and Research (bidding) phase
-    -- and current_phase + current_round == 2
-    if neutrino_count == 0 and neutrinosEndRound == true then
-      endPhase()
-      neutrinosEndRound = false
-    end
-  end
-
-  function getPlayerHandItems(color)
-    local hand_items = {}
-    local guid_items = {}
-    local objects = Player[color].getHandObjects(1)
-    if #objects > 0 then
-      for i = 1, #objects do
-        local object = objects[i]
-        local name = object.getName()
-        if hand_items[name] ~= nil then
-          hand_items[name] = hand_items[name] + 1
-        else
-          hand_items[name] = 1
-        end
-        if guid_items[name] == nil then
-          guid_items[name] = {object.guid}
-        else
-          table.insert(guid_items[name], object.guid)
-        end
-      end
-    end
-    return {hand_items, guid_items}
-  end
-
-  -- this functions records special cards that are placed in the build area for quests
-  -- so we can track and enact the abilities for the player
-  function addSpecialCard(player_color, object)
-    if object == nil then
-      return
-    end
-
-    local card_name = object.getName()
-    if card_name == nil then
-      return
-    end
-
-    if singleCardPowers[card_name] ~= nil then
-      -- gain 9 eV immediately
-      if card_name == "E Annihilation" then
         one_ev_bag.call("dealCoins", {["value"] = 9, ["player_color"] = player_color})
-        return
+      end,
+      function()
+        return object.resting
+      end,
+      5,
+      function()
+        broadcastToColor("Couldn't complete automatic E Annihilation code, please take 9eV Manually.", player_color)
       end
-    end
-
-    for key, value in pairs(singleCardPowers) do
-      if card_name == key and singleCardPowers[card_name] ~= nil then
-        singleCardPowers[card_name] = player_color
-        return
-      end
-    end
-
-    if multiCardPowers[player_color][card_name] ~= nil then
-      multiCardPowers[player_color][card_name] = multiCardPowers[player_color][card_name] + 1
-    end
-  end
-
-  --function to remove special card if player accidentally placed a card
-  --in their build area, then remove it
-  function removeSpecialCard(player_color, object)
-    if object == nil then
+        )
       return
     end
+  end
 
-    local card_name = object.getName()
-    if card_name == nil then
+  for key, value in pairs(singleCardPowers) do
+    if card_name == key and singleCardPowers[card_name] ~= nil then
+      singleCardPowers[card_name] = player_color
       return
     end
-
-    if singleCardPowers[card_name] ~= nil then
-      -- gain 9 eV immediately
-      if card_name == "E Annihilation" then
-        --could call spendMoney function here to retract the mistaken income
-        broadcastToColor("Please remove 9 eV from your coins since you have removed E Annihilaiton from your build area!", player_color)
-        return
-      end
-    end
-
-    for key, value in pairs(singleCardPowers) do
-      if card_name == key and singleCardPowers[card_name] ~= nil then
-        singleCardPowers[card_name] = "none"
-        return
-      end
-    end
-
-    if multiCardPowers[player_color][card_name] ~= nil then
-      multiCardPowers[player_color][card_name] = multiCardPowers[player_color][card_name] - 1
-    end
   end
 
-  --loops through and checks if draws are compelete in Phase 1
-  function drawsComplete()
-    count = player_draws["Yellow"] + player_draws["Green"] + player_draws["Red"] + player_draws["Blue"]
-    if count <= 0 then
-      endPhase()
-    end
+  if multiCardPowers[player_color][card_name] ~= nil then
+    multiCardPowers[player_color][card_name] = multiCardPowers[player_color][card_name] + 1
+  end
+end
+
+--function to remove special card if player accidentally placed a card
+--in their build area, then remove it
+function removeSpecialCard(player_color, object)
+  if object == nil then
+    return
   end
 
-  local turn_count = 0
-  -- tracks the turns during the quest phase to know when to end the phase
-  function onPlayerTurn(player, previous_player)
-    local players = getSeatedPlayers()
-    if current_phase == 5 then
-      turn_count = turn_count + 1
-      if turn_count == #players then
-        broadcastToColor("You must end your turn to end the game phase!", player.color)
-      end
-      if turn_count > #players then
-        turn_count = 0
-        endPhase()
-      end
-    end
+  local card_name = object.getName()
+  if card_name == nil then
+    return
   end
 
-  -- this function is a mess
-  function onObjectEnterZone(zone, enter_object)
-    if enter_object ~= nil and zone ~= nil then
-      if zone.type == "Hand" and enter_object.type == "Card" then
-        --has to do with special cards that allow drawing
-        if current_phase == 2 and after_eject_color ~= "none" then
-          -- make no changes when its a neutrino as the neutrino will retrigger this function
-          if enter_object.getName() ~= "Neutrino" then
-            before_eject_draw = before_eject_draw - 1
-          end
-          if before_eject_draw <= 0 then
-            beforeEjectDrawComplete = true
-            endPhase()
-          end
-        end
-
-        -- monitors draws to know when to end the phase
-        if current_phase == 1 and current_round ~= 1 then
-          -- check if all cards have been drawn and end phase
-          if enter_object.getName() ~= "Neutrino" then
-            player_draws[zone.color] = player_draws[zone.color] - 1
-          end
-          drawsComplete()
-        end
-
-        if current_round ~= 1 and current_phase == 1 then
-          -- make no changes when its a neutrino as the neutrino will retrigger this function
-          if enter_object.getName() ~= "Neutrino" then
-            before_eject_draw = before_eject_draw - 1
-          end
-          if before_eject_draw <= 0 then
-            beforeEjectDrawComplete = true
-            endPhase()
-          end
-        end
-
-        if current_round + current_phase ~= 2 and enter_object.getName() == "Neutrino" then
-          -- called as neutrinos must be dealt with immediately
-          Wait.time(
-            function()
-              checkForNeutrinos()
-            end,
-          1)
-        end
+  if singleCardPowers[card_name] ~= nil then
+    -- gain 9 eV immediately
+    if card_name == "E Annihilation" then
+      --could call spendMoney function here to retract the mistaken income
+      if one_ev_bag then
+        on_ev_bag.call("spendCoins", {["cost"] = 9, ["player_color"] = player_color})
       end
-    end
-  end
-
-  --function onObjectLeaveZone(zone, leave_object)
-  --if leave_object ~= nil and zone ~= nil then
-  --if scoring_zone[zone.getName()] then
-  --updateScore(zone, enter_object)
-  --end
-  --end
-  --end
-
-  function updateScore(data)
-    local zone = data["zone"]
-    local object = data["object"]
-    local state = data["state"]
-
-    if object == nil or zone == nil then
+      broadcastToColor("9 eV deducted: E Annihilation removed from your build area.", player_color)
       return
     end
+  end
 
-    local name = zone.getName()
-    local score = 0
-
-    -- updating score when items are placed in zone
-    local area_name = string.sub(name, #name - 3)
-    local color = string.sub(name, 1, #name - 5)
-    local build_board = getObjectFromGUID(build_board_guids[color])
-    local objects = zone.getObjects()
-
-    if area_name == "Zone" and #objects > 0 then
-      score = three_ev_bag.call("calculateScore", color)
-      build_board.call("updateScoreText", score)
-      --the event trigger enter collision or exit collision
-      if state == "enter" then
-        addSpecialCard(color, object)
-      end
-      if state == "exit" then
-        removeSpecialCard(color, object)
-      end
-
-    end
-
-    if area_name == "Coin" and #objects > 0 then
-      coin_board = getObjectFromGUID(coin_board_guids[color])
-      value = three_ev_bag.call("calculateCoins", color)
-      score = three_ev_bag.call("calculateScore", color)
-      coin_board.call("updateCoinText", value)
-      build_board.call("updateScoreText", score)
+  for key, value in pairs(singleCardPowers) do
+    if card_name == key and singleCardPowers[card_name] ~= nil then
+      singleCardPowers[card_name] = "none"
+      return
     end
   end
 
-  --2n runtime
-  -- checking if the object is being held by a player
-  function isHeldByPlayer(object)
-    local held_objects = {}
-    local green_obj = Player.Green.getHoldingObjects()
-    local red_obj = Player.Red.getHoldingObjects()
-    local blue_obj = Player.Blue.getHoldingObjects()
-    local yellow_obj = Player.Yellow.getHoldingObjects()
+  if multiCardPowers[player_color][card_name] ~= nil then
+    multiCardPowers[player_color][card_name] = multiCardPowers[player_color][card_name] - 1
+    if multiCardPowers[player_color][card_name] < 0 then
+      multiCardPowers[player_color][card_name] = 0
+    end
+  end
+end
 
-    if green_obj ~= nil then
-      spreadAndInsert(green_obj, held_objects)
+--attempt to preform arithmetic on a nil value when card enters hand
+function countTableValues(theTable)
+  log(theTable);
+  local count = 0
+  for i = 1, #players do
+    if theTable[players[i]] ~= nil then
+      count = count + theTable[players[i]]
+    end
+  end
+  log("Card Tracking count")
+  log(count)
+  return count
+end
+
+-- used to track turns during quest
+local quest_turn_count = 0
+
+--loops through and checks if draws are compelete in Phase 1
+function drawsComplete()
+  local count = countTableValues(player_draws)
+
+  --if everyone has drawn end funding phase
+  if count <= 0 then
+    colliders_complete = false -- controls onObjectEnter draw tracking function
+    quest_turn_count = 0
+
+    -- fully reset the table
+    for i = 1, #players do
+      player_draws[players[i]] = 0
     end
 
-    if red_obj ~= nil then
-      spreadAndInsert(red_obj, held_objects)
+    onRoundChange()
+  end
+end
+
+-- does not work because dealing out colliders causes this to trigger
+function onObjectEnterZone(zone, enter_object)
+  if enter_object ~= nil and zone ~= nil then
+    --add checks to prevent quest triggers during other phases and during drawing
+    if zone.type == "Layout" and enter_object.type == "Card" and current_phase == PHASE_QUEST then
+      -- look through player completed quest cards and record gluonium card_cost
+      local name = zone.getName()
+      local color = string.sub(name, 1, #name - 5)
+        updateGluoniumTracker({["color"] = color, ["zone"] = zone})
+      -- potentially add debounced score here.
     end
 
-    if blue_obj ~= nil then
-      spreadAndInsert(blue_obj, held_objects)
-    end
+    -- monitors draws to know when to end the phase during round 2-5 phase 1 (Funding)
+    -- requires Quest phase but all quests turns be completed so players are drawing
 
-    if yellow_obj ~= nil then
-      spreadAndInsert(yellow_obj, held_objects)
-    end
+    --ERROR Here in quest phase arithmetic nil value
+    if current_phase == PHASE_QUEST and quest_turn_count >= #players then
+      -- check if all cards have been drawn and end phase
+      if enter_object.getName() ~= "Neutrino" and zone ~= nil and player_draws[zone.getName()] ~= nil then
+        player_draws[zone.getName()] = player_draws[zone.getName()] - 1
 
-    if held_objects ~= nil and object ~= nil then
-      for i = 1, #held_objects do
-        if held_objects[i].getGUID() == object.getGUID() then
-          return true
+        -- to prevent weird behavior with drawsComplete calculating
+        if player_draws[zone.getName()] < 0 then
+          player_draws[zone.getName()] = 0
         end
       end
+      drawsComplete()
     end
 
-    return false
-  end
-
-  function spreadAndInsert(values, insertTable)
-    for i = 1, #values do
-      table.insert(insertTable, values[i])
+    if current_phase ~= PHASE_FUNDING and enter_object.getName() == "Neutrino" then
+      -- called as neutrinos must be dealt with immediately
+      -- debounce: only schedule one check at a time
+      if not neutrinoCheckScheduled then
+        neutrinoCheckScheduled = true
+        Wait.condition(function()
+          neutrinoCheckScheduled = false
+          checkForNeutrinos()
+        end,
+        function()
+          return enter_object == nil or enter_object.resting
+        end,
+        10,
+        function()
+          -- Timeout fallback: proceed to avoid blocking the game
+          log("WARNING: Timeout waiting for neutrino card to rest, proceeding anyway")
+          neutrinoCheckScheduled = false
+          checkForNeutrinos()
+        end)
+      end
     end
   end
+end
+
+function onObjectLeaveZone(zone, object)
+  if zone.type == "Layout" and object.type == "Card" and object.memo ~= "particle" then
+    updateScore({["zone"] = zone, ["object"] = object, ["state"] = "exit"})
+  end
+
+  if zone.type == "Scripting" and object.type == "Tile" and (object.memo == "three" or object.memo == "one") and zone.memo == "Coin" then
+    updateCoins(zone)
+  end
+end
+
+function updateCoins(zone)
+  local name = zone.getName()
+  local color = string.sub(name, 1, #name - 5)
+  local coin_board = getObjectFromGUID(coin_board_guids[color])
+  local value = three_ev_bag.call("calculateCoins", color)
+  if coin_board ~= nil and value ~= nil then
+    coin_board.call("updateCoinText", value)
+  end
+end
+
+function updateScore(data)
+  local zone = data["zone"]
+  local object = data["object"]
+  local state = data["state"]
+
+  if object == nil or zone == nil then
+    return
+  end
+
+  local name = zone.getName()
+  local score = 0
+
+  -- updating score when items are placed in zone
+  local area_name = string.sub(name, #name - 3)
+  local color = string.sub(name, 1, #name - 5)
+  local build_board = getObjectFromGUID(build_board_guids[color])
+
+  -- update both anytime there are changes
+  score = three_ev_bag.call("calculateScore", color)
+  build_board.call("updateScoreText", score)
+  updateCoins(zone)
+
+  if area_name == "Zone" then
+    --the event trigger enter collision or exit collision
+    if state == "enter" then
+      addSpecialCard(color, object)
+    end
+    if state == "exit" then
+      removeSpecialCard(color, object)
+    end
+
+  end
+end
+
+function updateGluoniumTracker(data)
+  local player_color = data["color"]
+  local zone = data["zone"]
+  --goes through player build zones to find build Gluonium cards
+  local quest_cards = zone.getObjects()
+  -- looks through player cards to see if player has gluonium
+  local count = 0
+  for i = 1, #quest_cards do
+    if quest_cards[i].getName() == "Gluonium" then
+      count = count + 1
+    end
+  end
+  -- this keeps tack of gluonium cards in hand but can't be used
+  -- for tracking how the cards being spent in a round
+  gluonium_tracker[player_color] = count
+end
+
+function resetGluoniumTracking()
+  for color, _ in pairs(spent_gluonium) do
+    spent_gluonium[color] = 0
+    gluonium_tracker[color] = 0
+  end
+end
+
+function updateScoreUi(player)
+  local color = player.color
+  local coin_board = getObjectFromGUID(coin_board_guids[color])
+  local value = three_ev_bag.call("calculateCoins", color)
+  local build_board = getObjectFromGUID(build_board_guids[color])
+  score = three_ev_bag.call("calculateScore", color)
+  coin_board.call("updateCoinText", value)
+  build_board.call("updateScoreText", score)
+end
+
+function toggleOption(player, value, id)
+  UI.setAttribute(id, "isOn", value)
+end
+
+function toggleUiTools()
+  local state = UI.getAttribute("sort_cards", "visibility")
+  if state == "hidden" then
+    UI.setAttribute("sort_cards", "visibility", "")
+    UI.setAttribute("sort_coins", "visibility", "")
+    UI.setAttribute("update_score", "visibility", "")
+  else
+    UI.setAttribute("sort_cards", "visibility", "hidden")
+    UI.setAttribute("sort_coins", "visibility", "hidden")
+    UI.setAttribute("update_score", "visibility", "hidden")
+  end
+end
+
+function sort_hand(player)
+  local hand = getObjectFromGUID(color_hand_guid[player.color])
+  local cards = hand.getObjects()
+  local org_pos = {}
+
+  for i = 1, #cards do
+    table.insert(org_pos, cards[i].getPosition())
+  end
+
+  -- quick sort to sort cards by type
+  cards = ejection_pile.call("expandToSort", {cards, 1, #cards, "name"})
+  -- quick sort cards by pile type (quest1, quest2, particles)
+  cards = ejection_pile.call("expandToSort", {cards, 1, #cards, "memo"})
+
+  for i = 1, #cards do
+    cards[i].setPosition(org_pos[i])
+  end
+end
+
+function layout_coins(player)
+  local one_bag = getObjectFromGUID("d98962")
+  one_bag.call("layoutCoins", player.color)
+end
+
+--2n runtime
+-- checking if the object is being held by a player
+function isHeldByPlayer(object)
+  local held_objects = {}
+  local green_obj = Player.Green.getHoldingObjects()
+  local red_obj = Player.Red.getHoldingObjects()
+  local blue_obj = Player.Blue.getHoldingObjects()
+  local yellow_obj = Player.Yellow.getHoldingObjects()
+
+  if green_obj ~= nil then
+    spreadAndInsert(green_obj, held_objects)
+  end
+
+  if red_obj ~= nil then
+    spreadAndInsert(red_obj, held_objects)
+  end
+
+  if blue_obj ~= nil then
+    spreadAndInsert(blue_obj, held_objects)
+  end
+
+  if yellow_obj ~= nil then
+    spreadAndInsert(yellow_obj, held_objects)
+  end
+
+  if held_objects ~= nil and object ~= nil then
+    for i = 1, #held_objects do
+      if held_objects[i].getGUID() == object.getGUID() then
+        return true
+      end
+    end
+  end
+
+  return false
+end
+
+function spreadAndInsert(values, insertTable)
+  for i = 1, #values do
+    table.insert(insertTable, values[i])
+  end
+end
+
+function endPhase()
+  if current_phase == 5 then
+    current_phase = 1
+  else
+    current_phase = current_phase + 1
+  end
+  onPhaseChange()
+end
+
+function trackQuestPhase()
+  quest_turn_count = quest_turn_count + 1
+  if quest_turn_count >= #players then
+    -- Reset gluonium tracking when quest phase ends (before moving to funding phase)
+    if current_round == 5 then
+      onRoundChange()
+      return
+    end
+    setupDrawTracking()
+  else
+    turn_control.call("next_turn")
+  end
+end
+
+function onPhaseChange()
+  phase_die.setRotationSmooth(dice_rot[current_phase])
+  phase_die.setPositionSmooth(phase_dice_pos[current_phase])
+
+  if current_phase == 1 then
+    --deal out colliders now that draws are done and end funding phase
+    local starting_card = getObjectFromGUID("de36d4")
+    starting_card.setPositionSmooth(starting_card_positions[starting_physicist])
+    neutrinosEndRound = true
+    neutrinosInProgress = 0
+    for i = 1, #players do
+      neutrinos_in_hand[players[i]] = {}
+    end
+    if #players >= 3 then
+      collider_board.call("four_player_deal")
+    else
+      collider_board.call("two_player_deal")
+    end
+  elseif current_phase == 2 then
+    --Research Phase, show bid buttons
+    collider_board.UI.setAttribute("slac_panel", "visibility", "")
+    collider_board.UI.setAttribute("tevatron_panel", "visibility", "")
+    collider_board.UI.setAttribute("esrf_panel", "visibility", "")
+    collider_board.UI.setAttribute("lhc_panel", "visibility", "")
+    Global.UI.setAttribute("change_turn", "onClick", "1f72b6/onEndTurn")
+
+    if #players == 4 then
+      collider_board.UI.setAttribute("kekb_panel", "visibility", "")
+    end
+
+    broadcastToAll("Research phase starts. " ..starting_physicist.. " bids first.")
+
+  elseif current_phase == 3 then
+    --Ejection Phase send message to each player on discard amount
+    collider_board.UI.setAttribute("slac_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("tevatron_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("esrf_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("lhc_panel", "visibility", "hidden")
+    collider_board.UI.setAttribute("kekb_panel", "visibility", "hidden")
+    Global.UI.setAttribute("change_turn", "onClick", "27af07/setEjectionsToZero")
+    --do something here to deal with beforeEject cards
+
+    particles_deck.call("onEjectionPhaseStart")
+  elseif current_phase == 4 then
+    if singleCardPowers["Pion After Eject"] ~= "none" then
+      broadcastToColor("You get to draw " ..math.floor(current_round / 2).. " extra cards of your choice due to your completed Pion.", singleCardPowers["Pion After Eject"])
+    end
+
+    --Discovery Phase
+    collider_board.UI.setAttribute("discovery_panel", "visibility", "")
+    ejection_pile.call("setupDiscoveryPhase")
+    Global.UI.setAttribute("change_turn", "onClick", "9f4d22/onEndTurn")
+
+  elseif current_phase == 5 then
+    --Quest Phase
+    Global.UI.setAttribute("change_turn", "onClick", "trackQuestPhase")
+    collider_board.UI.setAttribute("discovery_panel", "visibility", "hidden")
+    broadcastToAll("Quest phase starts. " ..starting_physicist.. " completes their quests first.")
+  end
+  turn_control.call("set_turn", starting_physicist)
+  collider_board.UI.setAttribute("round_tracker", "text", "Round " ..current_round.. ": " .. phase_text[current_phase] .. " Phase")
+end
+
+function onRoundChange()
+
+  -- decide next player
+  -- obtuse logic to prevent spamming change turn button problems
+  local num_order = turn_control.getTable("num_order")
+  local order_num = turn_control.getTable("order_num")
+  local oldPlayerNum = order_num[starting_physicist]
+  if oldPlayerNum >= #players then
+    starting_physicist = num_order[1]
+  else
+    starting_physicist = num_order[oldPlayerNum + 1]
+  end
+  turn_control.call("set_turn", starting_physicist)
+
+  --reset spent_gluonium and gluonium_tracker
+  -- Reset directly in Global
+  for color, _ in pairs(spent_gluonium) do
+    spent_gluonium[color] = 0
+    gluonium_tracker[color] = 0
+  end
+
+  -- recalculate gluonium counts for each player
+  for i = 1, #players do
+    local color = players[i]
+    local zone_guid = build_zone_guids[color]
+    local zone = getObjectFromGUID(zone_guid)
+    if zone then
+      updateGluoniumTracker({["color"] = color, ["zone"] = zone})
+    end
+  end
+
+  resetGluoniumTracking()
+
+  if current_round >= 5 then
+    broadcastToAll("You've reached the end of the game!", Table)
+    showScorePanel()
+  else
+    current_round = current_round + 1
+    round_die.setRotationSmooth(dice_rot[current_round])
+    round_die.setPositionSmooth(round_dice_pos[current_round])
+    endPhase()
+  end
+end
+
+function setupDrawTracking()
+  --reset turn control
+  Global.UI.setAttribute("change_turn", "onClick", "90061a/next_turn")
+
+  --fully reset and setup player draw tracking
+  player_draws = {}
+  for i = 1, #players do
+    player_draws[players[i]] = 1
+  end
+
+  -- check for and update player draw_counts if they have these special cards
+  -- we add an additional round as we handle drawing before the new round begins
+  if singleCardPowers["Green Pion Start"] ~= "none" then
+    local color = singleCardPowers["Green Pion Start"]
+    player_draws[color] = player_draws[color] + math.floor((current_round + 1) / 2)
+  end
+  -- two if statements in case the player has both cards
+  if singleCardPowers["Blue Pion Start"] ~= "none" then
+    local color = singleCardPowers["Blue Pion Start"]
+    player_draws[color] = player_draws[color] + math.floor((current_round + 1) / 2)
+  end
+
+  --loop to deal money to each player and tell them how many cards to draw
+  for i = 1, #players do
+    local player_color = players[i]
+
+    --players get 3 eV each round or more if they have Up Annhilation
+    if singleCardPowers["Up Annihilation"] == player_color then
+      --current_round is always one behind as we do this behavior before round turns over
+      one_ev_bag.call("dealCoins", {["value"] = 3 + (current_round + 1), ["player_color"] = player_color})
+    else
+      one_ev_bag.call("dealCoins", {["value"] = 3, ["player_color"] = player_color})
+    end
+
+    broadcastToColor("Draw " ..player_draws[player_color].. " card(s).", player_color)
+  end
+end
+
+--sets a table of objects to hidden from all but the provided player
+function hideFromPlayers(objects, player_color)
+  local hide_players = getPlayers()
+  for i = 1, #hide_players do
+    if hide_players[i] == player_color then
+      table.remove(hide_players, i)
+      break
+    end
+  end
+  for j = 1, #objects do
+    objects[j].setHiddenFrom(hide_players)
+  end
+end
+
+
+function showScorePanel()
+  local players = getPlayers();
+  local scores = {}
+  for i = 1, #players do
+    local point_value = three_ev_bag.call("calculateScore", players[i])
+    table.insert(scores, {["color"] = players[i], ["score"] = point_value})
+  end
+
+  table.sort(scores, function(a, b) return a.score > b.score end)
+
+  for i, value in ipairs(scores) do
+    UI.setAttribute("player" .. i, "text", value["color"] .. " players score: " .. value["score"])
+    UI.setAttribute("player" .. i .. "panel", "visibility", "")
+  end
+
+  UI.setAttribute("score_layout", "Height", (#players * 50) + (100))
+  UI.setAttribute("finalScorePanel", "visibility", "") -- set panel visible
+end
+
+function dismissScores()
+  UI.setAttribute("finalScorePanel", "visibility", "hidden")
+end

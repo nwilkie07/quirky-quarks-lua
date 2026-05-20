@@ -1,0 +1,34 @@
+function onLoad()
+  params = {
+    click_function = "sort_hand",
+    function_owner = self,
+    position = {0, 1, 0},
+    rotation = {0, 0, 0},
+    width = 600,
+    height = 600,
+    color = {0.5, 0.5, 0.5, 0},
+    tooltip = "Sort the cards in your hand!",
+  }
+  self.createButton(params)
+end
+
+function sort_hand(click_obj, player_color)
+  local ejection_pile = Global.getVar("ejection_pile")
+  local color_hand_guid = Global.getTable("color_hand_guid")
+  local hand = getObjectFromGUID(color_hand_guid[player_color])
+  local cards = hand.getObjects()
+  local org_pos = {}
+
+  for i = 1, #cards do
+    table.insert(org_pos, cards[i].getPosition())
+  end
+
+  -- quick sort to sort cards by type
+  cards = ejection_pile.call("expandToSort", {cards, 1, #cards, "name"})
+  -- quick sort cards by pile type (quest1, quest2, particles)
+  cards = ejection_pile.call("expandToSort", {cards, 1, #cards, "memo"})
+
+  for i = 1, #cards do
+    cards[i].setPosition(org_pos[i])
+  end
+end

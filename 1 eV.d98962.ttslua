@@ -12,74 +12,156 @@ function dealCoins(data)
   local coin_zone = getObjectFromGUID(coin_zone_guids[player_color])
   local rot = coin_zone.getRotation()
   local pos = coin_zone.getPosition()
-  local y_mod = 5
-  local x_start = -2.26
-  local x_mod = 1.5
-  -- depends on board side
-  if rot["y"] == 180 then
-    y_mod = -5
-    x_start = 2.26
-    x_mod = -1.5
-  end
 
   local money = value
-  local count = 1
 
   while money > 0 do
     if money >= 3 then
       three_bag.takeObject({
-        position = {pos[1] + x_start, 2, pos[3] + y_mod},
+        position = {pos[1], 2, pos[3]},
         rotation = rot,
         smooth = true,
       })
       money = money - 3
-      x_start = x_start + x_mod
     else
       one_bag.takeObject({
-        position = {pos[1] + x_start, 2, pos[3] + y_mod},
+        position = {pos[1], 2, pos[3]},
         rotation = rot,
         smooth = true,
       })
       money = money - 1
-      x_start = x_start + x_mod
-    end
-  end
-end
-
--- generic function to take coins from player when a spend action is performed
-function spendCoins(data)
-  local cost = data["cost"]
-  local player_color = data["player_color"]
-  local coin_zone_guids = Global.getTable("coin_zone_guids")
-  local coins = getObjectFromGUID(coin_zone_guids[player_color]).getObjects()
-
-  local threes = {}
-  local ones = {}
-
-  for i = 1, #coins do
-    if coins[i].memo == "three" then
-      table.insert(threes, coins[i])
-    end
-    if coins[i].memo == "one" then
-      table.insert(ones, coins[i])
     end
   end
 
-  while cost > 0 do
-    if cost >= 3 and #threes > 0 then
-      local three_coin = table.remove(threes)
-      three_coin.destruct()
-      cost = cost - 3
-    elseif cost < 3 and #ones <= 0 then
-      local three_coin = table.remove(threes)
-      local remainder = 3 - cost
-      dealCoins({["value"] = remainder, ["player_color"] = player_color})
-      three_coin.destruct()
-      cost = 0
-    else
-      local one_coin = table.remove(ones)
-      one_coin.destruct()
-      cost = cost - 1
+  Wait.time(
+    function()
+      layoutCoins(player_color)
+      end, 1
+    )
+  end
+
+  function layoutCoins(player_color)
+    local coin_zone_guids = Global.getTable("coin_zone_guids")
+    local coin_zone = getObjectFromGUID(coin_zone_guids[player_color])
+    local rot = coin_zone.getRotation()
+    local pos = coin_zone.getPosition()
+    local coins = coin_zone.getObjects()
+    local ejection_pile = Global.getVar("ejection_pile")
+
+    if #coins > 24 then
+      broadcastToColor("Too many coin. Cannot sort properly!", player_color)
+    end
+
+    -- quick sort to sort coins by name
+    coins = ejection_pile.call("expandToSort", {coins, 1, #coins, "memo"})
+
+    local x_mod = - 2
+    local z_mod = 3.45
+
+    if player_color == "Green" or player_color == "Blue" then
+      x_mod = 2
+      z_mod = - 3.45
+    end
+
+    local coin_size = 1.34
+    local start_pos = {pos["x"] + x_mod, 2, pos["z"] + z_mod}
+    local sort_count = 1
+
+    while sort_count < #coins do
+      for j = 0, 5 do
+        for i = 0, 3 do
+          if player_color == "Green" or player_color == "Blue" then
+            coins[sort_count].setPosition({start_pos[1] - i * coin_size, start_pos[2], start_pos[3] + j * coin_size})
+          else
+            coins[sort_count].setPosition({start_pos[1] + i * coin_size, start_pos[2], start_pos[3] - j * coin_size})
+          end
+          sort_count = sort_count + 1
+          if sort_count > #coins then
+            return
+          end
+        end
+      end
+    end
+  end
+
+  -- generic function to take coins from player when a spend action is performed
+  function spendCoins(data)
+    local cost = data["cost"]
+    local player_color = data["player_color"]
+    local coin_zone_guids = Global.getTable("coin_zone_guids")
+    local coins = getObjectFromGUID(coin_zone_guids[player_color]).getObjects()
+
+    local threes = {}
+    local ones = {}
+
+    for i = 1, #coins do
+      if coins[i].memo == "three" then
+        table.insert(threes, coins[i])
+      end
+      if coins[i].memo == "one" then
+        table.insert(ones, coins[i])
+      end
+    end
+    local removeThrees = {}
+    local removeOnes = {}
+    while cost > 0 do
+      if cost >= 3 and #threes > 0 then
+        local three_coin = table.remove(threes)
+        table.insert(removeThrees, three_coin)
+        cost = cost - 3
+      elseif cost < 3 and #ones <= 0 then
+        local three_coin = table.remove(threes)
+        local remainder = 3 - cost
+        dealCoins({["value"] = remainder, ["player_color"] = player_color})
+        table.insert(removeThrees, three_coin)
+        cost = 0
+      else
+        local one_coin = table.remove(ones)
+        table.insert(removeOnes, one_coin)
+        cost = cost - 1
+      end
+    end
+    local three_bag = Global.getVar("three_ev_bag")
+    local one_bag = Global.getVar("one_ev_bag")
+
+    displayAndDiscard(removeOnes, player_color, one_bag.getPosition(), one_bag.getRotation(), 4.75)
+    displayAndDiscard(removeThrees, player_color, three_bag.getPosition(), three_bag.getRotation(), 6)
+  end
+
+  function displayAndDiscard(items, player_color, discard_pos, discard_rot, z_mod)
+    log("Display and discard called")
+    -- puts the items in front of the user then discards them
+    for i = 1, #items do
+      local build_board_guids = Global.getTable("build_board_guids")
+      local build_board = getObjectFromGUID(build_board_guids[player_color])
+      local build_pos = build_board.getPosition()
+      local build_rot = build_board.getRotation()
+
+      local x_mod = 6 - i
+      local y_height = 1
+      local item = items[i]
+      local z_modify = - z_mod
+
+      if player_color == "Red" or player_color == "Yellow" then
+        z_modify = z_mod
+        x_mod = - 6 + i
+      end
+
+      if item ~= nil then
+        --place cards in front of user first
+        Wait.time( function()
+          item.setPositionSmooth({build_pos["x"] + x_mod, y_height, build_pos["z"] + z_modify})
+          item.setRotationSmooth({build_rot["x"], build_rot["y"], 0})
+        end,
+        i * 0.25
+      )
+
+      --then send cards to discard piles
+      Wait.time( function()
+        item.setPositionSmooth({discard_pos[1], 3.5, discard_pos[3]})
+        item.setRotationSmooth(discard_rot)
+        end, (#items + i) * 0.5
+      )
     end
   end
 end

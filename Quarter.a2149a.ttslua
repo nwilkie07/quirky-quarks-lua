@@ -1,0 +1,18 @@
+function onLoad()
+  params = {
+    click_function = "layoutCoins",
+    function_owner = self,
+    position = {0, 1, 0},
+    rotation = {0, 0, 0},
+    width = 500,
+    height = 500,
+    color = {0.5, 0.5, 0.5, 0},
+    tooltip = "Sort your coins.",
+  }
+  self.createButton(params)
+end
+
+function layoutCoins(click_object, player_color)
+  local one_bag = getObjectFromGUID("d98962")
+  one_bag.call("layoutCoins", player_color)
+end

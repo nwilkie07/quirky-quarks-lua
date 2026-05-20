@@ -1,4 +1,4 @@
-local placement_pos = { - 14.50, 0.97, - 7.00}
+local placement_pos = nil
 
 --none: player has not passed
 --round: player passes on the current bid
@@ -7,15 +7,13 @@ local passes = {}
 
 local hasStartedBid = {}
 
-local bid_order = {}
-
 -- the value of the current bid
-local bid = 1
+local bid = 2
 -- the color of the player with highest bid
 local bidder = nil
 -- the round number which only increases after each player gets to bid once
 -- controls the cost of starting bids
-local bid_round = 1
+local bid_tracker = 2
 -- the card being bid upon
 local bid_object = nil
 --tracks the place to send card back if a player passes
@@ -24,34 +22,47 @@ local collider_board = nil
 local bid_card_guids = {}
 local three_ev_bag = nil
 local turn_control = nil
+local players = {}
 
 function onLoad()
   three_ev_bag = Global.getVar("three_ev_bag")
   turn_control = getObjectFromGUID("90061a")
+  collider_board = getObjectFromGUID("1f72b6")
+  placement_pos = { - 14.50, 0.97, - 7.00}
+
   self.interactable = false
-  local players = getSeatedPlayers()
+  players = Global.call("getPlayers")
   for i = 1, #players do
     passes[players[i]] = "none"
     hasStartedBid[players[i]] = 0
   end
 end
 
+function onPlayerChangeColor( player_color)
+  players = Global.call("getPlayers")
+end
+
 function onEndTurn(player)
   local player_color = player.color
-
   --if the player ends their turn without bidding on a card
   if bidder == nil then
     playerPass(player, "all")
+    hasStartedBid[player.color] = 1
     --if the player ends their turn but a bid already exists
   elseif bidder ~= player_color then
     playerPass(player, "round")
   else
-    turn_control.call("next_turn")
+    attemptEndBid()
   end
 end
 
 --checks if player has the money and it is their bid turn, then increases the bid by +1
 function increaseBid(player)
+  if three_ev_bag == nil or collider_board == nil then
+    broadcastToAll("Game is not fully loaded yet. Please wait.")
+    return
+  end
+
   local current_phase = Global.getVar("current_phase")
   if current_phase == 4 then
     local player_color = player.color
@@ -70,13 +81,16 @@ function increaseBid(player)
   else
     broadcastToAll("Wrong phase, this button should not be available to you!")
   end
-
 end
 
 --called when a player clicks a pass button
 -- type: the pass type "round" or "all"
 function playerPass(player, type)
-  local collider_board = getObjectFromGUID("1f72b6")
+  if turn_control == nil or collider_board == nil then
+    broadcastToAll("Game is not fully loaded yet. Please wait.")
+    return
+  end
+
   local skip_player = turn_control.call("get_skip_player")
   local player_order = turn_control.call("get_player_order")
 
@@ -84,7 +98,7 @@ function playerPass(player, type)
   -- check if there is someone left to bid happens below
   -- return card to pile or otherwise (NOT COMPLETE)
   if player.color == bidder then
-    bid = bid_round
+    bid = bid_tracker
     bidder = nil
     --return bid card to its original position
     if bid_object ~= nil and bid_card_pos ~= nil then
@@ -98,30 +112,32 @@ function playerPass(player, type)
   local current_phase = Global.getVar("current_phase")
   if current_phase == 4 then
     passes[player.color] = type
+
+    --remove this player from the internal turn control for this bidding phase
+    turn_control.call("add_skip", player.color)
     -- cannot remove the final player from the turn system so try ending the bid
     if skip_player ~= nil and #skip_player >= #player_order - 1 then
       attemptEndBid()
       return
     end
 
-    --remove this player from the internal turn control for this bidding phase
-    turn_control.call("add_skip", player.color)
-
-    --set for bid amount tracking that if a player passes they've has a chance at bidding
-    if type == "all" then
-      hasStartedBid[player.color] = 1
-    end
-
     attemptEndBid()
   else
     broadcastToAll("Wrong phase, this button should not be available to you!")
   end
+
+  --maybe add a wait here so skips can be added properly?
+  turn_control.call("next_turn")
 end
 
 local bid_setup = false
 --if its a deck take the card
 -- collision {["color"] = , ["object"] =}
 function calculateBid(collision)
+  if turn_control == nil or collider_board == nil or three_ev_bag == nil then
+    return
+  end
+
   -- deals with re-trigger from moving card to bid position
   if bid_setup then
     bid_setup = false
@@ -133,7 +149,8 @@ function calculateBid(collision)
   local player_color = collision["player_color"]
   local object = collision["object"]
   local figurine_guids = Global.getTable("figurine_guids")
-  local physicist = getObjectFromGUID(figurine_guids[player_color])
+  local physicist_guid = figurine_guids and figurine_guids[player_color]
+  local physicist = physicist_guid and getObjectFromGUID(physicist_guid)
   local current_player = turn_control.call("get_current_turn")
 
   if player_color ~= current_player then
@@ -183,7 +200,9 @@ function calculateBid(collision)
       bid_card.setPositionSmooth(bid_card_pos)
     end
     bid_setup = true
-    physicist.setPositionSmooth({bid_card_pos[1], 2, bid_card_pos[3]})
+    if physicist then
+      physicist.setPositionSmooth({bid_card_pos[1], 2, bid_card_pos[3]})
+    end
   end
 
   --if its initial setup we set the bid_object
@@ -204,36 +223,27 @@ function calculateBid(collision)
   end
 
   --check to make sure the player can afford the bid they're making
-  -- what is going on here?
-  if player_coins < bid + 1 then
-    local type = "bid"
-    if passes[player_color] == "none" then
-      if player_coins < bid_round + 1 then
-        passes[player_color] = "all"
-        type = "ejection phase"
-      else
-        passes[player_color] = "round"
-      end
-    end
-    broadcastToAll("You do not have enough coins to bid. You will be automatically passed for this " ..type)
+  if player_coins < bid then
+    broadcastToAll("You do not have enough coins to bid, please end your turn.")
     collider_board.call("kickLowerBid", player_color)
     return
   end
 
   --check to ensure the correct card is being bid on
-  if bid_object.getName() == bid_card.getName() then
+  if bid_object and bid_object.getName() == bid_card.getName() then
     --if a new player is bidding and hasn't passed
     if player_color ~= bidder and passes[player_color] == "none" then
       -- kick other bid figurine (physicist)
+      -- and set bid value
       if bidder ~= nil then
         collider_board.call("kickLowerBid", bidder)
+        bid = bid + 1
+      else
+        bid = bid_tracker
       end
 
       bidder = player_color
-      bid = bid + 1
       collider_board.UI.setAttribute("discovery_bid", "text", "Bid: " ..bid)
-
-      --attemptEndBid() -- does this need to be here
     else
       broadcastToColor("You already have highest bid or have passed this round or you are trying to bid on another card. Only one card bid at a time.", player_color)
     end
@@ -241,9 +251,12 @@ function calculateBid(collision)
 end
 
 function attemptEndBid()
+  if turn_control == nil or collider_board == nil then
+    return
+  end
+
   local passCount = 0
-  local players = getSeatedPlayers()
-  local bid_count = 0
+
   --counting number of players that have passed
   for i = 1, #players do
     local player_color = players[i]
@@ -254,7 +267,7 @@ function attemptEndBid()
   end
 
   -- if all but one player has passed complete the bid
-  if passCount == #players - 1 and bidder ~= nil then
+  if passCount == #players - 1 and bidder ~= nil and bid_object ~= nil then
     --give card to player and reset bid variables
     bid_card_guids[bid_object.getGUID()] = nil
     bid_object.deal(1, bidder)
@@ -262,36 +275,22 @@ function attemptEndBid()
     collider_board.call("kickLowerBid", bidder)
 
     local one_ev_bag = Global.getVar("one_ev_bag")
-    one_ev_bag.call("spendCoins", {["cost"] = bid, ["player_color"] = bidder})
+    if one_ev_bag then
+      one_ev_bag.call("spendCoins", {["cost"] = bid, ["player_color"] = bidder})
+    end
 
     hasStartedBid[bidder] = 1
-    for i = 1, #players do
-      bid_count = bid_count + hasStartedBid[players[i]]
-    end
 
     local player_order = turn_control.call("get_player_order")
     local player_index = Global.getTable("player_index")
     local order_player = turn_control.call("get_order_player")
 
-    -- clear skips first, then re-add players who have skipped the whole phase
-    turn_control.call("clear_skip")
-    passCount = 0
-
-    -- has everyone had a chance to bid at the current starting bid value?
-    -- if so increment the round which increases the starting bid by 1
-    -- check which players should still be skipped by internal turn controls
-    -- resetting turns
-    if bid_count >= #players then
-      bid_round = bid_round + 1
-      for i = 1, #players do
-        if passes[players[i]] == "all" then
-          hasStartedBid[players[i]] = 1
-          turn_control.call("add_skip", players[i])
-          passCount = passCount + 1
-        else
-          -- table index is nil?
-          hasStartedBid[players[i]] = 0
-        end
+    -- remove skips that were round only
+    for i = 1, #players do
+      local player_color = players[i]
+      local pass_value = passes[player_color]
+      if pass_value == "round" then
+        turn_control.call("remove_skip", player_color)
       end
     end
 
@@ -305,7 +304,7 @@ function attemptEndBid()
     end
 
     -- reset variables
-    bid = bid_round
+    bid = bid_tracker
     bid_object = nil
     bidder = nil
 
@@ -317,19 +316,62 @@ function attemptEndBid()
       end
     end
   else
-    -- sets next turn, should auto figure it out based on passes
+    --turn is set when bid is called
     turn_control.call("next_turn")
   end
 
-  if discovery_zone.getObjects() == nil then
-    Global.call("endPhase")
-  elseif passCount == #players then
+  local bid_count = 0
+  passCount = 0
+
+  --update hasStartedBid for players that have passed entire phase
+  for i = 1, #players do
+    local type = passes[players[i]]
+    if type == "all" then
+      hasStartedBid[players[i]] = 1
+      passCount = passCount + 1
+    end
+    if type == "round" then
+      hasStartedBid[players[i]] = 0
+    end
+  end
+
+  for i = 1, #players do
+    --nil value with two players
+    bid_count = bid_count + hasStartedBid[players[i]]
+  end
+
+  -- has everyone had a chance to bid at the current starting bid value?
+  -- if so increment the round which increases the starting bid by 1
+  -- check which players should still be skipped by internal turn controls
+  -- resetting turns
+  if bid_count == #players then
+    bid_tracker = bid_tracker + 1
+    for i = 1, #players do
+      hasStartedBid[players[i]] = 0
+    end
+  end
+
+  local discovery_zone = getObjectFromGUID("6c7a71")
+  local cards = discovery_zone.getObjects()
+
+  if cards == nil or passCount == #players then
     -- discovery phase is over, perform cleanup
-    local discovery_zone = getObjectFromGUID("6c7a71")
-    local cards = discovery_zone.getObjects()
+    -- reset all variables to default values
     --all players are turned back on in the turn system
-    local player_order = Global.getVar("player_order")
     turn_control.call("clear_skip")
+
+    bid_tracker = 2
+    bid = 2
+    bid_object = nil
+    bidder = nil
+    bid_card_guids = {}
+    -- reset to make sure cards are placed in the correct position in next round
+    placement_pos = { - 14.50, 0.97, - 7.00}
+
+    for i = 1, #players do
+      passes[players[i]] = "none"
+      hasStartedBid[players[i]] = 0
+    end
 
     sendToDiscard(cards)
     Global.call("endPhase")
@@ -341,39 +383,48 @@ end
 -- will ignore cards that are not of type particle or quest
 -- runtime O(n^2)
 function sendToDiscard(cards)
+  if cards == nil then return end
+
   for i = 1, #cards do
     local card = cards[i]
-    Wait.time(
-      function()
-        if card.type == "Deck" then
-          for key, value in pairs(card.getObjects()) do
-            if #card.getObjects() >= 2 then
-              discardDeckCard(card, value)
-            else
-              local final_card = getObjectFromGUID(value.guid)
-              discardCard(final_card)
+    if card == nil then
+      -- skip nil cards
+    else
+      Wait.time(
+        function()
+          if card.type == "Deck" then
+            for key, value in pairs(card.getObjects()) do
+              if #card.getObjects() >= 2 then
+                discardDeckCard(card, value)
+              else
+                local final_card = getObjectFromGUID(value.guid)
+                discardCard(final_card)
+              end
             end
+          elseif card.type == "Card" then
+            discardCard(card)
           end
-        elseif card.type == "Card" then
-          discardCard(card)
-        end
         end, i
       )
     end
   end
+end
 
 
   function discardCard(card)
+    if card == nil then return end
+
     local particle_discard = Global.getVar("particle_discard_zone")
     local quest1_discard = Global.getVar("quest1_discard_zone")
     local quest2_discard = Global.getVar("quest2_discard_zone")
-    if card.memo == "particle" then
+
+    if card.memo == "particle" and particle_discard then
       card.setRotation(particle_discard.getRotation())
       card.setPositionSmooth(particle_discard.getPosition())
-    elseif card.memo == "quest_one" then
+    elseif card.memo == "quest_one" and quest1_discard then
       card.setRotation(quest1_discard.getRotation())
       card.setPositionSmooth(quest1_discard.getPosition())
-    elseif card.memo == "quest_two" then
+    elseif card.memo == "quest_two" and quest2_discard then
       card.setRotation(quest2_discard.getRotation())
       card.setPositionSmooth(quest2_discard.getPosition())
     end
@@ -381,10 +432,13 @@ function sendToDiscard(cards)
 
   -- does not work for decks
   function discardDeckCard(deck, card)
+    if deck == nil or card == nil then return end
+
     local particle_discard = Global.getVar("particle_discard_zone")
     local quest1_discard = Global.getVar("quest1_discard_zone")
     local quest2_discard = Global.getVar("quest2_discard_zone")
-    if card.memo == "particle" then
+
+    if card.memo == "particle" and particle_discard then
       deck.takeObject({
         position = particle_discard.getPosition(),
         rotation = particle_discard.getRotation(),
@@ -392,7 +446,7 @@ function sendToDiscard(cards)
         flip = false,
         guid = card.guid,
       })
-    elseif card.memo == "quest_one" then
+    elseif card.memo == "quest_one" and quest1_discard then
       deck.takeObject({
         position = quest1_discard.getPosition(),
         rotation = quest1_discard.getRotation(),
@@ -400,7 +454,7 @@ function sendToDiscard(cards)
         flip = false,
         guid = card.guid,
       })
-    elseif card.memo == "quest_two" then
+    elseif card.memo == "quest_two" and quest2_discard then
       deck.takeObject({
         position = quest2_discard.getPosition(),
         rotation = quest2_discard.getRotation(),
@@ -413,18 +467,48 @@ function sendToDiscard(cards)
 
   --add behavior to handle if there is only one card
   function setupDiscoveryPhase()
+    if collider_board == nil then
+      broadcastToAll("Game is not fully loaded yet. Please wait.")
+      return
+    end
+
+    --reset hasStartedBid and passes for new discovery phase
+    for i = 1, #players do
+      hasStartedBid[players[i]] = 0
+      passes[players[i]] = "none"
+    end
+
     --register player physicist figurines for collisions
     local figurine_guids = Global.getTable("figurine_guids")
 
     -- register the figurines for collisions to detect bids
-    for color, guid in pairs(figurine_guids) do
-      getObjectFromGUID(guid).registerCollisions(false)
+    if figurine_guids then
+      for color, guid in pairs(figurine_guids) do
+        local figurine = getObjectFromGUID(guid)
+        if figurine then
+          figurine.registerCollisions(false)
+        end
+      end
     end
 
     local eject_zone = getObjectFromGUID("0cb1ea")
+    if eject_zone == nil then
+      broadcastToAll("Ejection zone not found!")
+      return
+    end
+
     local eject_deck = createDeck(eject_zone.getObjects())
+    if eject_deck == nil then
+      broadcastToAll("No cards to eject!")
+      return
+    end
+
     local eject_cards = eject_deck.getObjects()
-    local collider_board = getObjectFromGUID("1f72b6")
+    if eject_cards == nil or #eject_cards == 0 then
+      broadcastToAll("No cards to eject!")
+      return
+    end
+
     local rotation = collider_board.getRotation()
 
     -- quick sort to sort cards by type
@@ -437,7 +521,7 @@ function sendToDiscard(cards)
     local prev_card = eject_deck.takeObject({
       position = placement_pos,
       rotation = {0, 90, 0},
-      smooth = True,
+      smooth = true,
       guid = prev_card_data.guid,
     })
     local x_mod = 3.2
@@ -445,6 +529,13 @@ function sendToDiscard(cards)
     local z_mod = 2
 
     bid_card_guids[prev_card_data.guid] = prev_card
+
+    local delay = 0
+    local starting_physicist = Global.getVar("starting_physicist")
+
+    Wait.time(function()
+      broadcastToAll("Discovery phase starts. " ..starting_physicist.. " bids first.")
+    end, #eject_cards * 0.25)
 
     -- layout cards on table
     for i = 2, #eject_cards do
@@ -472,15 +563,17 @@ function sendToDiscard(cards)
             local current_card = eject_deck.takeObject({
               position = placement_pos,
               rotation = {0, 90, 0},
-              smooth = True,
+              smooth = true,
               guid = current_card_data.guid,
             })
             prev_card_data = current_card_data
           else
             local last_card = getObjectFromGUID(current_card_data.guid)
-            bid_card_guids[last_card.getGUID()] = last_card
-            last_card.setPositionSmooth(placement_pos)
-            last_card.setRotationSmooth({0, 90, 0})
+            if last_card then
+              bid_card_guids[last_card.getGUID()] = last_card
+              last_card.setPositionSmooth(placement_pos)
+              last_card.setRotationSmooth({0, 90, 0})
+            end
           end
         end,
         i * 0.25
@@ -492,6 +585,10 @@ function sendToDiscard(cards)
   -- places any other cards into one main deck
   -- returns the reference to the deck
   function createDeck(objects)
+    if objects == nil then
+      return nil
+    end
+
     local master_deck = nil
 
     for key, value in pairs(objects) do
@@ -501,8 +598,12 @@ function sendToDiscard(cards)
       end
     end
 
+    if master_deck == nil then
+      return nil
+    end
+
     for key, value in pairs(objects) do
-      if value.name ~= "Ejection Pile" and value.guid ~= master_deck.guid then
+      if value.name ~= "Ejection Pile" and master_deck.guid ~= nil and value.guid ~= master_deck.guid then
         if value.type == "Deck" or value.type == "Card" then
           master_deck.putObject(value)
         end
@@ -514,7 +615,7 @@ function sendToDiscard(cards)
 
   function nameCompare(a, b)
     if a.name == b.name or a.name < b.name then
-      return True
+      return true
     else
       return false
     end
@@ -525,7 +626,12 @@ function sendToDiscard(cards)
     local pivot = nil
 
     if type == "name" then
-      pivot = arr[high].name
+      if arr[high].name == "Card" then
+        pivot = arr[high].getName()
+      else
+        pivot = arr[high].name
+      end
+
     else
       pivot = arr[high].memo
     end
@@ -535,7 +641,11 @@ function sendToDiscard(cards)
     for j = low, high - 1 do
       local compareVal = nil
       if type == "name" then
-        compareVal = arr[j].name
+        if arr[j].name == "Card" then
+          compareVal = arr[j].getName()
+        else
+          compareVal = arr[j].name
+        end
       else
         compareVal = arr[j].memo
       end
@@ -546,6 +656,10 @@ function sendToDiscard(cards)
     end
     arr[i + 1], arr[high] = arr[high], arr[i + 1]
     return (i + 1)
+  end
+
+  function expandToSort(data)
+    return quicksort(data[1], data[2], data[3], data[4])
   end
 
   function quicksort(arr, low, high, type)

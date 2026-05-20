@@ -1,22 +1,27 @@
-local turn_order = {}
+local players = {}
 local hasColorBid = {}
 
 function onLoad()
   self.interactable = false
+  players = Global.call("getPlayers")
+end
+
+function onPlayerChangeColor( player_color)
+  players = Global.call("getPlayers")
 end
 
 --add a check to ensure enough cards in the deck
-function two_player_deal(round)
+function two_player_deal()
   --add round control
   setupTurnOrder()
 
   -- setup slac
-  deal_particles(-4.43, 1, 1, "slac")
+  deal_particles(-4.43, 1, "slac")
 
   Wait.time(
     function()
       -- setup Tevatron
-      deal_particles(-2.18, 2, 1, "tevatron")
+      deal_particles(-2.18, 2, "tevatron")
     end,
     1
   )
@@ -24,7 +29,7 @@ function two_player_deal(round)
   Wait.time(
     function()
       --setup ESRF
-      deal_particles(0.03, 3, 1, "esrf")
+      deal_particles(0.03, 3, "esrf")
     end,
     2.5
   )
@@ -32,43 +37,43 @@ function two_player_deal(round)
   Wait.time(
     function()
       --setup LHC
-      deal_particles(2.27, 4, 1, "lhc")
+      deal_particles(2.27, 4, "lhc")
     end,
     4.5
   )
-
-
+  Wait.time(
+    function()
+      Global.call("checkForNeutrinos")
+    end
+  , 4.5)
 end
 
 --deal behavior unchecked
 function four_player_deal()
-  --add round control
-  local players = getSeatedPlayers()
-
   --{-24.39, 0.96, 0.39} to {-19.04, 0.97, -4.04} to {-19.09, 0.97, -1.79}
   setupTurnOrder()
 
   -- setup slac
-  deal_particles(-4.43, 2, 1, "slac")
+  deal_particles(-4.43, 2, "slac")
 
   Wait.time(
     function()
       -- setup Tevatron
-      deal_particles(-2.18, 3, 1, "tevatron")
+      deal_particles(-2.18, 3, "tevatron")
     end,
   1.5)
 
   Wait.time(
     function()
       --setup ESRF
-      deal_particles(0.03, 3, 1, "esrf")
+      deal_particles(0.03, 3, "esrf")
     end,
   3.5)
 
   Wait.time(
     function()
       --setup LHC
-      deal_particles(2.27, 4, 1, "lhc")
+      deal_particles(2.27, 4, "lhc")
     end,
   6)
 
@@ -76,17 +81,27 @@ function four_player_deal()
     Wait.time(
       function()
         --setup SuperKEKB
-        deal_particles(4.48, 4, 1, "kekb")
+        deal_particles(4.48, 4, "kekb")
       end,
     8.5)
+    Wait.time(
+      function()
+        Global.call("checkForNeutrinos")
+      end
+    , 8.5)
+  else
+    Wait.time(
+      function()
+        Global.call("checkForNeutrinos")
+      end
+    , 6)
   end
 end
 
--- a way to track turn order during bidding in the research phase
+-- a way to track bidding in the research phase
 function setupTurnOrder()
-  order = getSeatedPlayers()
+  local order = Global.call("getPlayers")
   for i = 1, #order do
-    turn_order[order[i]] = i
     hasColorBid[order[i]] = false
   end
 end
@@ -100,7 +115,7 @@ local bid_cards = {
   ['kekb'] = {}
 }
 
-function deal_particles(z_mod, count, round, collider)
+function deal_particles(z_mod, count, collider)
   local board = Global.getVar("collider_board")
   local pos = board.getPosition()
   local rot = board.getRotation()
@@ -129,7 +144,8 @@ function deal_particles(z_mod, count, round, collider)
   end
 
   local quest_mod = count
-  if round <= 3 then
+  local current_round = Global.getVar("current_round");
+  if current_round <= 3 then
     Wait.time(
       function()
         local taken_quest1 = quest_one.takeObject({
@@ -146,7 +162,7 @@ function deal_particles(z_mod, count, round, collider)
 
   end
 
-  if round > 3 then
+  if current_round > 3 then
     Wait.time(
       function()
         local taken_quest2 = quest_two.takeObject({
@@ -204,6 +220,17 @@ local bid_modifiers = {
   ["kekb"] = 0,
 }
 
+function onEndTurn()
+  local turn_control = getObjectFromGUID("90061a")
+  local player_color = turn_control.call("get_current_turn")
+  if hasColorBid[player_color] == false then
+    broadcastToColor("You must bid on a collider before ending your turn.", player_color)
+  else
+    turn_control.call("next_turn")
+  end
+  checkBidComplete()
+end
+
 function deal_out_bids()
   for key, cards in pairs(bid_cards) do
     local player_color = current_bid_color[key]
@@ -215,16 +242,9 @@ function deal_out_bids()
         cards[i].setPositionSmooth(ejection_pile.getPosition())
       end
     end
-
   end
-
-  bid_cards = {
-    ["slac"] = {},
-    ["tevatron"] = {},
-    ["esrf"] = {},
-    ["lhc"] = {},
-    ["kekb"] = {}
-  }
+  --allow cards entering hands to trigger draw tracking
+  Global.setVar("colliders_complete", true)
 end
 
 local distance_mods = {
@@ -267,7 +287,11 @@ function onObjectDrop(colorName, object)
   local money_text = coin_board.UI.getAttribute(string.lower(colorName) .. "_coins", "text")
   local money = tonumber(string.sub(money_text, 0, #money_text - 3))
 
-  if object.getName() == "10 eV" and current_phase == 2 and #zones > 0 then
+  if #zones > 1 then
+    broadcastToColor("You cannot bid on multiple colliders.", colorName)
+  end
+
+  if object.getName() == "10 eV" and current_phase == 2 and #zones == 1 then
     for i = 1, #zones do
       local zone_name = zones[i].getName()
 
@@ -293,11 +317,11 @@ function onObjectDrop(colorName, object)
     end
   end
 
-  if object.type == "Figurine" and current_phase == 2 and #zones > 0 then
+  if object.type == "Figurine" and current_phase == 2 and #zones == 1 then
     for i = 1, #zones do
       local zone_name = zones[i].getName()
 
-      if colorName ~= current_turn and modifier == nil then
+      if colorName ~= current_turn then
         broadcastToColor("It is not your turn to bid!", colorName)
         kickLowerBid(colorName)
         return
@@ -371,7 +395,6 @@ function attemptBid(collider, newBid, player_color)
       kickLowerBid(player_color)
     end
   end
-  checkBidComplete()
 end
 
 -- moves "researcher" figurine back near player of that color
@@ -406,50 +429,87 @@ function checkBidComplete()
       end, wait_time)
       wait_time = wait_time + 2.5
     end
-    Global.setVar("neutrinosEndRound", true)
-
+    --reset variables but not before dealing is complete
     Wait.time(function()
-      Global.call("checkForNeutrinos")
-    end, wait_time + 1)
-  end
+      current_bid_color = {
+      ["slac"] = "none",
+      ["tevatron"] = "none",
+      ["esrf"] = "none",
+      ["lhc"] = "none",
+      ["kekb"] = "none",
+    }
+
+    current_bid = {
+      ["slac"] = 0,
+      ["tevatron"] = 0,
+      ["esrf"] = 0,
+      ["lhc"] = 0,
+      ["kekb"] = 0,
+    }
+
+    bid_cards = {
+      ["slac"] = {},
+      ["tevatron"] = {},
+      ["esrf"] = {},
+      ['lhc'] = {},
+      ['kekb'] = {}
+    }
+
+    bid_modifiers = {
+      ["slac"] = 0,
+      ["tevatron"] = 0,
+      ["esrf"] = 0,
+      ["lhc"] = 0,
+      ["kekb"] = 0,
+    }
+
+    setupTurnOrder()
+  end, wait_time)
+  broadcastToAll("Research Phase ending please wait and resolve neutrinos as they appear.")
+  Global.setVar("neutrinosEndRound", true)
+
+  Wait.time(function()
+    Global.call("checkForNeutrinos")
+  end, wait_time + 1)
+end
 end
 
 function dealOutColliders(collider, player_color)
-  local cards = bid_cards[collider]
-  local ejection_pile = Global.getVar("ejection_pile")
-  local eject_pos = ejection_pile.getPosition()
-  local eject_rot = ejection_pile.getRotation()
-  if #cards == 0 then
-    return
-  end
+local cards = bid_cards[collider]
+local ejection_pile = Global.getVar("ejection_pile")
+local eject_pos = ejection_pile.getPosition()
+local eject_rot = ejection_pile.getRotation()
+if #cards == 0 then
+  return
+end
 
-  if player_color ~= "none" then
-    for i = 1, #cards do
-      Wait.time(function()
-        cards[i].deal(1, player_color)
-        local cost = current_bid[collider]
-        local one_ev_bag = Global.getVar("one_ev_bag")
-        one_ev_bag.call("spendCoins", {["cost"] = cost, ["player_color"] = player_color})
-        kickLowerBid(player_color)
-      end, i * 0.5)
-    end
-  else
-    for j = 1, #cards do
-      Wait.time(function()
-        cards[j].setRotation({eject_rot[1], eject_rot[2], 180}, false, false)
-        cards[j].setPositionSmooth({eject_pos[1], 2, eject_pos[3]}, false, false)
-      end, j * 0.5)
-    end
+if player_color ~= "none" then
+  for i = 1, #cards do
+    Wait.time(function()
+      cards[i].deal(1, player_color)
+      local cost = current_bid[collider]
+      local one_ev_bag = Global.getVar("one_ev_bag")
+      one_ev_bag.call("spendCoins", {["cost"] = cost, ["player_color"] = player_color})
+      kickLowerBid(player_color)
+    end, i * 0.5)
   end
+else
+  for j = 1, #cards do
+    Wait.time(function()
+      cards[j].setRotation({eject_rot[1], eject_rot[2], 180}, false, false)
+      cards[j].setPositionSmooth({eject_pos[1], 2, eject_pos[3]}, false, false)
+    end, j * 0.5)
+  end
+end
 end
 
 
 function countBids()
-  local bid_count = 0
-  for k, v in pairs(current_bid) do
-    if v > 0 then
-      bid_count = bid_count + 1
-    end
+local bid_count = 0
+for k, v in pairs(current_bid) do
+  if v > 0 then
+    bid_count = bid_count + 1
   end
-  return bid_count
+end
+return bid_count
 end

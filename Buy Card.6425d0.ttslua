@@ -1,16 +1,10 @@
 
-local purchase_object = nil
+purchase_object = nil
 local spend_cards = {}
 local guids = {}
 local neg_count = 0
 local player_color = ""
-
-local layout_zones = {
-  ["Red"] = "f1ae5e",
-  ["Blue"] = "a157d6",
-  ["Yellow"] = "a157d6",
-  ["Green"] = "3cd4dd"
-}
+local build_board_guids = nil
 
 local player_hands = {["Red"] = "0e9106",
   ["Yellow"] = "3e5ce5",
@@ -20,6 +14,7 @@ local player_hands = {["Red"] = "0e9106",
 function onLoad()
   self.registerCollisions()
   self.interactable = false
+  build_board_guids = Global.getTable("build_board_guids")
 end
 
 --helper function that loops through the players hand (who clicked the buy button)
@@ -30,6 +25,7 @@ function getPlayerHandItems()
   local hand_items = {}
   local guid_items = {}
   local objects = Player[player_color].getHandObjects(1)
+
   if #objects > 0 then
     for i = 1, #objects do
       local object = objects[i]
@@ -64,7 +60,6 @@ end
 
 function performPurchase()
   local cards = Player[player_color].getHandObjects(1)
-  local player_hands = Global.getTable("color_hand_guid")
   local hand = player_hands[player_color]
   -- what is going on??!?!?!? something to do with local?
 
@@ -91,222 +86,255 @@ function performPurchase()
       rot = quest_two_discard.getRotation()
     end
 
-    getObjectFromGUID(spend_cards[i]).setPositionSmooth(pos)
-  end
+    local build_board = getObjectFromGUID(build_board_guids[player_color])
+    local build_pos = build_board.getPosition()
+    local build_rot = build_board.getRotation()
 
-  --places purchased card in build zone that auto organizes
-  --add ability to auto group quests of same type (maybe)
-  local build_zones = Global.getTable("build_zone_guids")
-  local build_zone = getObjectFromGUID(build_zones[player_color])
+    local x_mod = 6 - i
+    local y_height = pos["y"] + 1
+    local z_mod = - 6
 
-  getObjectFromGUID(purchase_object.getGUID()).setPositionSmooth(build_zone.getPosition())
-  Wait.time(
-    function()
-      build_zone.Zone.layout()
-    end, 1)
-
-    purchase_object = nil
-    spend_cards = {}
-    guids = {}
-    neg_count = 0
-    player_color = ""
-  end
-
-  -- reset by the round tracker at the end of each round
-  -- tracks which players have Gluonium cards which provide a
-  -- free Gluonium to use in Quests each round
-  local gluonium_tracker = {
-    ["Red"] = 0,
-    ["Yellow"] = 0,
-    ["Blue"] = 0,
-    ["Green"] = 0
-  }
-
-  --accepts a table of the same format as gluonium_tracker
-  function setGluoniumTracker(gluonium)
-    gluonium_tracker = gluonium
-  end
-
-  function purchaseCard(clicked_object, color)
-    local current_phase = Global.getVar("current_phase")
-
-    if current_phase ~= 5 then
-      broadcastToAll("You cannot complete quests as it is not the quest phase!")
-      return
+    if player_color == "Red" or player_color == "Yellow" then
+      z_mod = 6
+      x_mod = - 6 + i
     end
 
-    player_color = color
-    local card_costs = Global.getTable("card_costs")
-    local hands = getPlayerHandItems(player_color)
-    -- hand format ["card_type"] = count
-    local hand = hands[1]
-    -- guid format ["card_type"] = guid array of the cards of this type
-    guids = hands[2]
+    if card ~= nil then
+      --place cards in front of user first
+      Wait.time( function()
+        card.setPosition({build_pos["x"] + x_mod, y_height, build_pos["z"] + z_mod})
+        card.setRotation({build_rot["x"], build_rot["y"], 0})
+      end,
+      i * 0.25
+    )
 
-    -- player color of player that has this completed quest which offer unlimited electrons
-    local wigner_crystal_color = Global.getTable("singleCardPowers")["Wigner Crystal"]
+    --then send cards to discard piles
+    Wait.time( function()
+      card.setPositionSmooth(pos)
+      card.setRotationSmooth(rot)
+      end, (#spend_cards + i) * 0.5
+    )
+  end
 
-    --negatives is an array of all the card names/types (with duplicates) of the missing cards
-    local negatives = {}
-    --threes_count: variable with a count of how many sets of 3 identical particle cards the player has in their hand
-    local threes_count = 0
-    -- threes is an array (with duplicates) of the card_types the player has sets of 3's of
-    local threes = {}
-    if purchase_object ~= nil then
-      --get table of the required cards for the quest
-      local card_cost = card_costs[purchase_object.getName()]
+end
 
-      -- removes costs related to electrons if the player has the Wigner Crystal Quest Completed
-      if wigner_crystal_color == player_color and card_cost["Electron"] ~= nil then
-        card_cost["Electron"] = nil
-      end
+--places purchased card in build zone that auto organizes
+--add ability to auto group quests of same type (maybe)
+local build_zones = Global.getTable("build_zone_guids")
+local build_zone = getObjectFromGUID(build_zones[player_color])
 
-      --if the player has completed Gluonium quests they can use it once per round to reduce another quests cost
-      --the EndRound function resets the gluonium_tracker table each round so the Gluonium is available again
-      if gluonium_tracker[player_color] > 0 and card_cost["Gluon"] ~= nil then
-        local remaining_gluons = card_cost["Gluon"] - gluonium_tracker[player_color]
-        if remaining_gluons <= 0 then
-          gluonium_tracker[player_color] = gluonium_tracker[player_color] - card_cost["Gluon"]
-          card_cost["Gluon"] = nil
-        else
-          card_cost["Gluon"] = remaining_gluons
-          gluonium_tracker[player_color] = 0
-        end
-      end
+getObjectFromGUID(purchase_object.getGUID()).setPositionSmooth(build_zone.getPosition())
+Wait.time(
+  function()
+    build_zone.Zone.layout()
+  end, 1)
 
-      -- if that player has cards of this type in their hand
-      -- attempt to add the cards needed for the quest to the spend_cards table
-      for card_type, card_count in pairs(card_cost) do
-        if hand[card_type] then
-          for i = 1, card_count do
-            if #guids[card_type] > 0 then
-              local removed_guid = table.remove(guids[card_type])
-              table.insert(spend_cards, removed_guid)
-            else
-              table.insert(negatives, card_type)
-            end
-          end
-          -- records how many cards that would be left of this type in the hand
-          -- (negative num means the player is missing some of the required cards)
-          hand[card_type] = hand[card_type] - card_count
-        else
-          -- if they don't have any of this card we just record the number needed (as a negative number)
-          hand[card_type] = -card_count
-        end
+  purchase_object = nil
+  spend_cards = {}
+  guids = {}
+  neg_count = 0
+  player_color = ""
+end
 
-        if hand[card_type] < 0 then
-          -- variable to record the total number of cards missing from the players hand
-          neg_count = neg_count + hand[card_type]
-        end
+function purchaseCard(clicked_object, color)
+  local current_phase = Global.getVar("current_phase")
 
-        if hand[card_type] >= 3 then
-          --count the total sets of three cards the player has from the remaining hand
-          threes_count = threes_count + math.floor(count / 3)
-          table.insert(threes, card_type)
-        end
-      end
+  --if current_phase ~= 5 then
+  --broadcastToAll("You cannot complete quests as it is not the quest phase!")
+  --return
+  --end
 
-      if neg_count == 0 then
-        --perform purchase: discard relevant cards,
-        -- puts quest in build area
-        performPurchase()
-        return true
-      end
+  player_color = color
+  local card_costs = Global.getTable("card_costs")
+  local hands = getPlayerHandItems(player_color)
+  -- hand format ["card_type"] = count
+  local hand = hands[1]
+  -- guid format ["card_type"] = guid array of the cards of this type
+  guids = hands[2]
 
-      if neg_count > threes_count then
-        --return build card to hand
-        purchase_object.deal(1, player_color)
-        broadcastToAll("You cannot afford this card.")
-        return false
+  -- player color of player that has this completed quest which offer unlimited electrons
+  local wigner_crystal_color = Global.getTable("singleCardPowers")["Wigner Crystal"]
+
+  -- Get gluonium tracking from Global
+  local spent_gluonium = Global.getTable("spent_gluonium")
+  local gluonium_tracker = Global.getTable("gluonium_tracker")
+
+  --negatives is an array of all the card names/types (with duplicates) of the missing cards
+  local negatives = {}
+  --threes_count: variable with a count of how many sets of 3 identical particle cards the player has in their hand
+  local threes_count = 0
+  -- threes is an array (with duplicates) of the card_types the player has sets of 3's of
+  local threes = {}
+  if purchase_object ~= nil then
+    --get table of the required cards for the quest
+    local card_cost = card_costs[purchase_object.getName()]
+
+    -- removes costs related to electrons if the player has the Wigner Crystal Quest Completed
+    if wigner_crystal_color == player_color and card_cost["Electron"] ~= nil then
+      card_cost["Electron"] = nil
+    end
+
+    --if the player has completed Gluonium quests they can use it once per round to reduce another quests cost
+    --the EndRound function resets the gluonium_tracker table each round so the Gluonium is available again
+    if card_cost["Gluon"] ~= nil and spent_gluonium[player_color] < gluonium_tracker[player_color] then
+      local remaining_gluons = card_cost["Gluon"] - (gluonium_tracker[player_color] - spent_gluonium[player_color])
+      if remaining_gluons <= 0 then
+        spent_gluonium[player_color] = spent_gluonium[player_color] + card_cost["Gluon"]
+        card_cost["Gluon"] = nil
       else
-        if neg_count == threes_count then
-          -- gets the card type we have three of
-          -- and gets the guids from the hand
-          -- then inserts them into our spending table
-          for k, v in pairs(threes) do
-            for k, v in pairs(guids[v]) do
-              table.insert(spend_cards, v)
-            end
+        card_cost["Gluon"] = remaining_gluons
+        spent_gluonium[player_color] = spent_gluonium[player_color] + gluonium_tracker[player_color]
+      end
+    end
+    -- Save back to Global
+    Global.setTable("spent_gluonium", spent_gluonium)
+
+    -- if that player has cards of this type in their hand
+    -- attempt to add the cards needed for the quest to the spend_cards table
+    for card_type, card_count in pairs(card_cost) do
+      if hand[card_type] then
+        for i = 1, card_count do
+          if #guids[card_type] > 0 then
+            local removed_guid = table.remove(guids[card_type])
+            table.insert(spend_cards, removed_guid)
+          else
+            table.insert(negatives, card_type)
           end
-          performPurchase()
-        else
-          -- in this case show UI to select which cards
-          -- the user wants to convert to do the purchase
-          -- then perform the purchase behavior
-          createMultiSelect(hand)
         end
+        -- records how many cards that would be left of this type in the hand
+        -- (negative num means the player is missing some of the required cards)
+        hand[card_type] = hand[card_type] - card_count
+      else
+        -- if they don't have any of this card we just record the number needed (as a negative number)
+        hand[card_type] = -card_count
       end
 
-    else
-      broadcastToAll("No card placed on the purchase spot.")
+      if hand[card_type] < 0 then
+        -- variable to record the total number of cards missing from the players hand
+        neg_count = neg_count + hand[card_type]
+      end
     end
-  end
 
-  -- compress this function to use setXMLTable to create and generate the UI on the fly
-  function createMultiSelect(hand)
-    local count = 1
-    for key, value in pairs(hand) do
-      if value == 3 then
+    --calculate 3's separately from remaining cards_in_hand
+    for card_type, card_count in pairs(hand) do
+      if card_count >= 3 then
+        --count the total sets of three cards the player has from the remaining hand
+        threes_count = threes_count + math.floor(card_count / 3)
+        table.insert(threes, card_type)
+      end
+    end
+
+    if neg_count == 0 then
+      --perform purchase: discard relevant cards,
+      -- puts quest in build area
+      performPurchase()
+      return true
+    end
+
+
+    -- convert neg_count to positive
+    if neg_count * (-1) > threes_count then
+      --return build card to hand
+      purchase_object.deal(1, player_color)
+      --reset all purchase behavior after failed bid
+      purchase_object = nil
+      spend_cards = {}
+      guids = {}
+      neg_count = 0
+      player_color = ""
+      broadcastToAll("You cannot afford this card.")
+      return false
+    else
+      if neg_count * (-1) == threes_count then
+        -- gets the card type we have three of
+        -- and gets the guids from the hand
+        -- then inserts them into our spending table
+        for k, v in pairs(threes) do
+          for k2, v2 in pairs(guids[v]) do
+            table.insert(spend_cards, v2)
+          end
+        end
+        performPurchase()
+      else
+        -- in this case show UI to select which cards
+        -- the user wants to convert to do the purchase
+        -- then perform the purchase behavior
+        createMultiSelect(hand)
+      end
+    end
+
+  else
+    broadcastToAll("No card placed on the purchase spot.")
+  end
+end
+
+-- compress this function to use setXMLTable to create and generate the UI on the fly
+function createMultiSelect(hand)
+  local count = 1
+  for key, value in pairs(hand) do
+    if value == 3 then
+      UI.setAttributes("row"..count, {active = "true", visibility = player_color})
+      UI.setAttributes("text"..count, {text = "3 " .. key .. "s"})
+      count = count + 1
+    end
+    if value > 3 then
+      for i = 1, math.floor(value / 3) do
         UI.setAttributes("row"..count, {active = "true", visibility = player_color})
         UI.setAttributes("text"..count, {text = "3 " .. key .. "s"})
         count = count + 1
       end
-      if value > 3 then
-        for i = 1, math.floor(value / 3) do
-          UI.setAttributes("row"..count, {active = "true", visibility = player_color})
-          UI.setAttributes("text"..count, {text = "3 " .. key .. "s"})
-          count = count + 1
-        end
-      end
-
     end
-    UI.setAttributes("row6", {active = "true", visibility = player_color})
-    UI.setAttributes("row0", {active = "true", visibility = player_color})
 
-    local optionText = ""
-    if neg_count > 1 then
-      optionText = "Select " .. neg_count .. " options."
-    else
-      optionText = "Select " .. neg_count .. " option."
+  end
+  UI.setAttributes("row6", {active = "true", visibility = player_color})
+  UI.setAttributes("row0", {active = "true", visibility = player_color})
+
+  local optionText = ""
+  if neg_count * (-1) > 1 then
+    optionText = "Select " .. neg_count .. " options."
+  else
+    optionText = "Select " .. neg_count .. " option."
+  end
+  UI.setAttributes("indicator_text", {text = optionText})
+end
+
+function complexPurchase(player, value, id)
+  local selected = 0
+  local text = UI.getAttribute("indicator_text", "text")
+
+  for i = 1, 5 do
+    isOn = UI.getAttribute("toggle" ..i, "isOn")
+    if isOn == "True" then
+      selected = selected + 1
     end
-    UI.setAttributes("indicator_text", {text = optionText})
   end
 
-  function complexPurchase(player, value, id)
-    local selected = 0
-    local text = UI.getAttribute("indicator_text", "text")
-
+  if selected == (neg_count * (-1)) then
     for i = 1, 5 do
-      isOn = UI.getAttribute("toggle" ..i, "isOn")
+      isOn = UI.getAttribute("toggle" .. i, "isOn")
       if isOn == "True" then
-        selected = selected + 1
-      end
-    end
+        button_text = UI.getAttribute("text" .. i, "text")
+        text = string.sub(button_text, 3, #button_text - 1)
 
-    if selected == neg_count then
-      for i = 1, 5 do
-        isOn = UI.getAttribute("toggle" .. i, "isOn")
-        if isOn == "True" then
-          button_text = UI.getAttribute("text" .. i, "text")
-          text = string.sub(button_text, 3, #button_text - 1)
-
-          for j = 1, 3 do
-            card = table.remove(guids[text])
-            table.insert(spend_cards, card)
-          end
+        for j = 1, 3 do
+          card = table.remove(guids[text])
+          table.insert(spend_cards, card)
         end
-
-        UI.setAttributes("row" .. i, {active = "false", isOn = "false"})
       end
 
-      UI.setAttributes("row6", {active = "false"})
-      UI.setAttributes("row0", {active = "false"})
-      performPurchase()
-    end
-    if selected < neg_count then
-      broadcastToColor("Not enough options selected.", player_color, {255, 255, 255})
-    else
-      broadcastToColor("Too many options selected.", player_color, {255, 255, 255})
+      UI.setAttributes("row" .. i, {active = "false", isOn = "false"})
     end
 
+    UI.setAttributes("row6", {active = "false"})
+    UI.setAttributes("row0", {active = "false"})
+    performPurchase()
+    return
   end
+
+  if selected < neg_count * (-1) then
+    broadcastToColor("Not enough options selected.", player_color, {255, 255, 255})
+  else
+    broadcastToColor("Too many options selected.", player_color, {255, 255, 255})
+  end
+
+end

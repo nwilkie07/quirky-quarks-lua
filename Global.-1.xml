@@ -2,27 +2,28 @@
 <!-- Automatically adjust sizing based on Toggles Visible -->
 <!--ADD CANCEL BUTTON-->
 
-<VerticalLayout rectAlignment="UpperLeft" Width="500" Height="70">
-  <Text id="round_tracker" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Round 1: Funding Phase</Text>
-</VerticalLayout>
-
-<VerticalLayout Width="200" Height="37" position="-230 467 0" active="false">
-  <Button id="pass_bid" onClick="9f4d22/playerPass(round)" tooltipPosition="Below" color="#FFFFFF" tooltip="Passes current bid. You will continue to bid on other cards." fontSize="24" shadow="#000000" outline="#000000">Pass Bid</Button>
-</VerticalLayout>
-
-<VerticalLayout Width="200" Height="37" position="0 415 0" active="false">
-  <Button onClick="9f4d22/increaseBid" id="increase_bid" tooltipPosition="Below" tooltip="Danger: Increases your bid beyond the automatic +1." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Increase Bid</Button>
-</VerticalLayout>
-
-<VerticalLayout Width="200" Height="37" position="230 467 0" active="false">
-  <Button id="pass_round" onClick="9f4d22/playerPass(all)" tooltipPosition="Below" tooltip="Danger: Click to no longer participate in the Discovery Phase!" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Pass Round</Button>
-</VerticalLayout>
-
-<Panel anchorMin="0 0" anchorMax="1 0.91">
-  <Panel Width="200" Height="37" rectAlignment="upperCenter">
+<Panel offsetXY="0 -80">
+  <Panel Width="200" Height="37" rectAlignment="upperCenter" allowDragging="true" returnToOriginalPositionWhenReleased="false">
     <Button id="change_turn" onClick="90061a/next_turn" tooltipPosition="Below" tooltip="Click to end your turn." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">End Your Turn</Button>
     <Button id="turn_indicator" tooltipPosition="Below" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="" active="false">Players Turn</Button>
   </Panel>
+</Panel>
+
+<Panel offsetXY="80 0">
+  <VerticalLayout spacing="4" rectAlignment="upperLeft" Width="200" Height="128" allowDragging="true" returnToOriginalPositionWhenReleased="false" childForceExpandHeight="false" childControlHeight="false">
+    <Panel Width="200" Height="32">
+      <Button id="toggle_tools" onClick="toggleUiTools" tooltipPosition="Right" tooltip="Sort the cards in your hand." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000" visibility="">Show/Hide Tools</Button>
+    </Panel>
+    <Panel id="sort_cards_panel" Width="200" Height="32" visibility="">
+      <Button id="sort_cards" onClick="sort_hand" tooltipPosition="Right" tooltip="Sort the cards in your hand." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Sort Cards</Button>
+    </Panel>
+    <Panel id="sort_coins_panel" Width="200" Height="32" visibility="">
+      <Button id="sort_coins" onClick="layout_coins" tooltipPosition="Right" tooltip="Sort the money in your coin area." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Sort Coins</Button>
+    </Panel>
+    <Panel id="update_score_panel" Width="200" Height="32" visibility="">
+      <Button id="update_score" onClick="updateScoreUi" tooltipPosition="Right" tooltip="Update coin and build area values in case of error." color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Update eV/Score</Button>
+    </Panel>
+  </VerticalLayout>
 </Panel>
 
 <Panel id="build_selector" rectAlignment="middleCenter" Width="150" Height="300" background="#FFFFFF">
@@ -70,4 +71,37 @@
       </Cell>
     </Row>
   </TableLayout>
+</Panel>
+
+<Panel offsetXY="0 0" id="finalScorePanel" visibility="hidden">
+  <VerticalLayout id="score_layout" color="#FFFFFF" spacing="4" rectAlignment="middleCenter" Width="400" Height="300" allowDragging="true" returnToOriginalPositionWhenReleased="false" childForceExpandHeight="false" childControlHeight="false">
+  <Panel Width="400" Height="50">
+    <Text fontSize="32" color="#1A1A1A" fontStyle="Bold" alignment="MiddleCenter">
+      Final Scores
+    </Text>
+  </Panel>
+    <Panel id="player1panel" Width="400" Height="50" visiblity="hidden">
+      <Text id="player1" fontSize="32" color="#1A1A1A" alignment="MiddleCenter">
+        Placeholder Text
+      </Text>
+    </Panel>
+    <Panel id="player2panel" Width="400" Height="50" visibility="hidden">
+      <Text id="player2" fontSize="32" color="#1A1A1A" alignment="MiddleCenter">
+        Placeholder Text
+      </Text>
+    </Panel>
+    <Panel id="player3panel" Width="400" Height="50" visibility="hidden">
+      <Text id="player3" fontSize="32" color="#1A1A1A" alignment="MiddleCenter">
+        Placeholder Text
+      </Text>
+    </Panel>
+    <Panel id="player4panel" Width="400" Height="50" visibility="hidden">
+      <Text id="player4" fontSize="32" color="#1A1A1A" alignment="MiddleCenter">
+        Placeholder Text
+      </Text>
+    </Panel>
+    <Panel id="update_score_panel" Width="400" Height="50">
+      <Button onClick="dismissScores" color="#FFFFFF" fontSize="24" shadow="#000000" outline="#000000">Dismiss</Button>
+    </Panel>
+  </VerticalLayout>
 </Panel>
